@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<meta name="theme-color" content="#15171b"/>
+<title>Call Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --gun0:#121419; --gun1:#1d212a; --gun2:#2a2f3a; --gun3:#363c49;
+  --ink:#1b2029; --mut:#5c636f; --line:#a7afbd;
+  --brass:#cda74e; --brass-hi:#f3d785; --brass-dk:#8a6c28;
+  --green:#2f9061; --red:#c33b2c; --slate:#5c636f;
+  --disp:'Space Grotesk',system-ui,sans-serif; --mono:'Space Mono',ui-monospace,monospace; --ui:'Inter',system-ui,sans-serif;
+  --plate:linear-gradient(150deg,#f7f9fc 0%,#e1e6ee 36%,#cbd2dd 52%,#e8ecf2 100%);
+  --plate-edge:inset 0 1px 0 #ffffff, inset 0 0 0 1px rgba(255,255,255,.3), inset 0 -3px 7px rgba(0,0,0,.13), 0 10px 24px -12px rgba(0,0,0,.7);
+  --dark-brushed:linear-gradient(180deg,#39404c 0%,#262b34 58%,#1a1d24 100%);
+  --brush: repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, rgba(0,0,0,.02) 1px 2px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#0d0f12;color:var(--ink);font-family:var(--ui)}
+#app{max-width:480px;margin:0 auto;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden;
+  background:radial-gradient(120% 70% at 50% -10%, #272c36 0%, #181b21 55%, #101216 100%)}
+svg{display:block}
+
+/* ---- header: dark brushed steel ---- */
+header{position:relative;background:var(--dark-brushed);color:#eef1f6;padding:15px 18px 16px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14), 0 4px 14px rgba(0,0,0,.5);border-bottom:1px solid #0c0e12}
+header::after{content:'';position:absolute;inset:0;background:var(--brush);pointer-events:none;opacity:.7}
+.htop{display:flex;justify-content:space-between;align-items:center;position:relative}
+.agent{display:flex;align-items:center;gap:11px}
+.agbadge{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,#454c59,#22272f);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),inset 0 -2px 4px rgba(0,0,0,.5),0 2px 5px rgba(0,0,0,.4);
+  color:var(--brass-hi)}
+.agent b{font-family:var(--disp);font-weight:700;font-size:16px;letter-spacing:.2px;display:block}
+.agent small{font-size:10.5px;color:#97a1b4;letter-spacing:.1em;text-transform:uppercase}
+.tally{text-align:right}
+.tally b{font-family:var(--disp);font-weight:700;font-size:32px;line-height:1;
+  background:linear-gradient(180deg,#f5da8c,#cda74e 55%,#9d7a30);-webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 1px 0 rgba(0,0,0,.3)}
+.tally span{display:block;font-size:9.5px;color:#97a1b4;letter-spacing:.16em;text-transform:uppercase;margin-top:3px}
+.rail{position:relative;margin-top:13px;height:9px;border-radius:8px;background:linear-gradient(180deg,#0f1217,#1c212a);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.7), inset 0 -1px 0 rgba(255,255,255,.05);overflow:hidden}
+.rail i{display:block;height:100%;border-radius:8px;background:linear-gradient(180deg,#f3d785,#cda74e 60%,#a07c30);
+  box-shadow:0 0 8px rgba(205,167,78,.5);transition:width .45s ease}
+.railnum{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:#8b94a6;margin-top:6px}
+
+.body{flex:1;overflow-y:auto;padding:18px 16px 96px}
+.view{display:none}.view.on{display:block}
+
+/* ---- record card: polished steel plate ---- */
+.stage{position:relative;min-height:340px}
+.rec{position:relative;background:var(--plate);border:1px solid var(--line);border-radius:18px;
+  padding:24px 20px 18px;box-shadow:var(--plate-edge);overflow:hidden}
+.rec::after{content:'';position:absolute;inset:0;background:var(--brush);pointer-events:none;opacity:.5;border-radius:18px}
+.rectag{position:absolute;top:14px;left:18px;font-family:var(--mono);font-size:9px;letter-spacing:.18em;color:#7c8492;display:flex;align-items:center;gap:5px}
+.recno{position:absolute;top:13px;right:18px;font-family:var(--mono);font-size:11px;color:var(--brass-dk);font-weight:700}
+.token{width:64px;height:64px;border-radius:15px;margin:24px auto 12px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--disp);font-weight:700;font-size:27px;color:var(--brass-hi);
+  background:linear-gradient(180deg,#3b414e,#20252e);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -3px 6px rgba(0,0,0,.55),0 4px 9px rgba(0,0,0,.35)}
+.cname{font-family:var(--disp);font-weight:700;font-size:25px;text-align:center;line-height:1.1;color:#171c24;position:relative}
+.cnum{font-family:var(--mono);font-weight:700;font-size:18px;text-align:center;color:#222730;margin:8px 0 2px;letter-spacing:.5px;position:relative}
+.cloc{text-align:center;font-size:12px;color:#5c636f;letter-spacing:.04em;position:relative}
+
+.call{position:relative;display:flex;align-items:center;justify-content:center;gap:9px;width:100%;margin-top:18px;
+  border:1px solid #1f5e3e;border-radius:14px;padding:15px;font-family:var(--disp);font-weight:700;font-size:17px;
+  text-decoration:none;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.4);letter-spacing:.02em;
+  background:linear-gradient(180deg,#46b07c,#2f9061 52%,#236e49);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -3px 5px rgba(0,0,0,.28),0 5px 12px rgba(0,0,0,.4)}
+.call:active{transform:translateY(1px);box-shadow:inset 0 2px 5px rgba(0,0,0,.4)}
+
+/* stamp imprint */
+.stamp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;z-index:4}
+.stamp span{font-family:var(--disp);font-weight:700;font-size:30px;letter-spacing:.06em;text-transform:uppercase;
+  border:4px solid currentColor;border-radius:10px;padding:8px 16px;transform:rotate(-11deg);opacity:.9;
+  box-shadow:0 2px 5px rgba(0,0,0,.15)}
+.rec.fire .stamp{animation:stampin .34s cubic-bezier(.2,.9,.3,1.3) forwards}
+.rec.leave{animation:slideout .32s ease forwards}
+.rec.enter{animation:slidein .34s ease}
+@keyframes stampin{0%{opacity:0;transform:scale(1.6)}60%{opacity:1;transform:scale(.96)}100%{opacity:1;transform:scale(1)}}
+@keyframes slideout{to{transform:translateX(-115%) rotate(-3deg);opacity:0}}
+@keyframes slidein{from{transform:translateX(40%);opacity:0}}
+
+/* outcome stamp pad: small steel keys */
+.padlbl{font-family:var(--ui);font-size:11px;font-weight:600;color:#9aa3b3;letter-spacing:.12em;text-transform:uppercase;
+  margin:22px 4px 11px;display:flex;justify-content:space-between}
+.pad{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.oc{display:flex;align-items:center;gap:11px;border:1px solid var(--line);border-radius:14px;padding:14px 13px;
+  font-family:var(--disp);font-weight:500;font-size:15px;color:#1d222b;cursor:pointer;text-align:left;
+  background:var(--plate);box-shadow:var(--plate-edge)}
+.oc:active{transform:translateY(1px);box-shadow:inset 0 2px 5px rgba(0,0,0,.25)}
+.oc .ico{width:34px;height:34px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -2px 4px rgba(0,0,0,.3),0 2px 4px rgba(0,0,0,.25)}
+.i-green{background:linear-gradient(180deg,#46b07c,#268254)} .i-red{background:linear-gradient(180deg,#d6584a,#a82f22)}
+.i-brass{background:linear-gradient(180deg,#f0cd78,#b78c34)} .i-slate{background:linear-gradient(180deg,#737c8b,#4a515d)}
+
+.note{width:100%;margin-top:13px;padding:13px;border:1px solid var(--line);border-radius:12px;font-family:var(--ui);font-size:14px;
+  background:linear-gradient(180deg,#eef1f6,#dde2ea);box-shadow:inset 0 2px 4px rgba(0,0,0,.12)}
+.skip{width:100%;margin-top:10px;border:1px solid #99a2b0;color:#5c636f;border-radius:12px;padding:13px;
+  font-family:var(--disp);font-weight:500;font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px;
+  background:linear-gradient(180deg,#e7ebf1,#d3d9e2);box-shadow:inset 0 1px 0 #fff,0 2px 5px rgba(0,0,0,.18)}
+:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+
+/* lists / callers / setup rows */
+.sechead{font-family:var(--disp);font-weight:700;font-size:18px;margin:2px 0 14px;color:#eef1f6;display:flex;align-items:center;gap:9px}
+.sechead .si{color:var(--brass-hi)}
+.row{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:14px;
+  padding:14px;margin-bottom:11px;background:var(--plate);box-shadow:var(--plate-edge)}
+.row b{font-family:var(--disp);font-size:16px;color:#1c212a}
+.row .meta{font-family:var(--mono);font-size:11px;color:#5c636f;margin-top:3px}
+.chip{font-family:var(--ui);font-size:11px;font-weight:600;padding:5px 11px;border-radius:20px;color:#1c212a;
+  background:linear-gradient(180deg,#e9edf3,#d2d8e1);box-shadow:inset 0 1px 0 #fff,0 1px 2px rgba(0,0,0,.2);display:inline-flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;box-shadow:0 0 4px currentColor}
+.bar{height:9px;background:linear-gradient(180deg,#9aa1ad,#c2c8d2);border-radius:8px;overflow:hidden;margin:12px 0 6px;box-shadow:inset 0 1px 3px rgba(0,0,0,.3)}
+.bar i{display:block;height:100%;background:linear-gradient(180deg,#f3d785,#cda74e 60%,#a07c30);box-shadow:0 0 8px rgba(205,167,78,.5)}
+.note2{font-size:12px;color:#8b94a6;text-align:center;margin-top:16px;line-height:1.5}
+.done{text-align:center;padding:52px 16px;color:#aeb6c4}
+.done .big{font-family:var(--disp);font-weight:700;font-size:48px;
+  background:linear-gradient(180deg,#f5da8c,#cda74e);-webkit-background-clip:text;background-clip:text;color:transparent}
+.done h3{color:#eef1f6;font-family:var(--disp)}
+
+/* callback sheet */
+.sheetbg{position:absolute;inset:0;background:rgba(8,10,13,.6);opacity:0;pointer-events:none;transition:.2s;z-index:30}
+.sheetbg.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-width:480px;margin:0 auto;border-radius:20px 20px 0 0;
+  padding:18px 18px calc(18px + env(safe-area-inset-bottom));transform:translateY(100%);
+  transition:transform .26s cubic-bezier(.2,.8,.3,1);z-index:31;background:var(--dark-brushed);
+  box-shadow:0 -10px 30px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.12);border-top:1px solid #0c0e12}
+.sheetbg.on .sheet{transform:translateY(0)}
+.sheet h4{font-family:var(--disp);font-weight:700;font-size:18px;margin:2px 0 2px;color:#eef1f6;display:flex;gap:8px;align-items:center}
+.sheet h4 .si{color:var(--brass-hi)}
+.sheet .sub{font-size:12px;color:#97a1b4;margin-bottom:14px}
+.cbgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.cb{border:1px solid var(--line);border-radius:13px;padding:13px 11px;font-family:var(--disp);font-weight:500;font-size:14px;
+  color:#1c212a;text-align:left;cursor:pointer;background:var(--plate);box-shadow:var(--plate-edge)}
+.cb.sel{border:2px solid var(--brass);box-shadow:inset 0 0 0 1px var(--brass-hi),0 4px 12px rgba(205,167,78,.3)}
+.cb small{display:block;font-family:var(--mono);font-size:10px;color:#5c636f;margin-top:3px;font-weight:400}
+.cbcustom{display:flex;align-items:center;gap:9px;margin-bottom:16px}
+.cbcustom label{font-size:12px;color:#97a1b4;white-space:nowrap}
+.cbcustom input{flex:1;padding:11px;border:1px solid var(--line);border-radius:11px;font-family:var(--mono);font-size:13px;
+  background:linear-gradient(180deg,#eef1f6,#dde2ea);box-shadow:inset 0 2px 4px rgba(0,0,0,.12)}
+.sheetbtns{display:flex;gap:10px}
+.sheetbtns button{flex:1;border-radius:13px;padding:15px;font-family:var(--disp);font-weight:700;font-size:15px;cursor:pointer;border:1px solid}
+.b-go{color:#3a2e0e;border-color:#7a5f24;background:linear-gradient(180deg,#f3d785,#cda74e 55%,#9c7a30);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 4px 10px rgba(0,0,0,.4)}
+.b-cancel{color:#aeb6c4;border-color:#3a414d;background:linear-gradient(180deg,#333944,#23272f)}
+
+/* toast */
+.toast{position:absolute;left:50%;bottom:108px;transform:translateX(-50%) translateY(16px);
+  background:linear-gradient(180deg,#333944,#1d212a);color:#eef1f6;font-family:var(--disp);font-weight:500;
+  padding:11px 20px;border-radius:30px;font-size:14px;opacity:0;transition:.22s;pointer-events:none;z-index:40;
+  border:1px solid #0c0e12;box-shadow:inset 0 1px 0 rgba(255,255,255,.15),0 6px 18px rgba(0,0,0,.5);display:flex;align-items:center;gap:8px}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* bottom nav: brushed steel bar */
+nav{position:absolute;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;height:68px;display:flex;
+  background:var(--dark-brushed);border-top:1px solid #0c0e12;box-shadow:0 -4px 14px rgba(0,0,0,.5)}
+nav::before{content:'';position:absolute;inset:0;background:var(--brush);opacity:.6;pointer-events:none}
+nav button{flex:1;background:none;border:none;color:#8b94a6;font-family:var(--ui);font-size:10px;font-weight:600;
+  letter-spacing:.04em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;position:relative}
+nav button.on{color:var(--brass-hi)}
+nav button.on::after{content:'';position:absolute;top:7px;width:22px;height:3px;border-radius:3px;
+  background:linear-gradient(90deg,#f3d785,#cda74e);box-shadow:0 0 8px rgba(205,167,78,.6)}
+
+/* login overlay */
+.loginbg{position:absolute;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:radial-gradient(120% 70% at 50% -10%, #272c36 0%, #181b21 55%, #101216 100%);opacity:0;pointer-events:none;transition:.2s}
+.loginbg.on{opacity:1;pointer-events:auto}
+.loginpanel{width:100%;max-width:360px;background:var(--plate);border:1px solid var(--line);border-radius:18px;box-shadow:var(--plate-edge);padding:24px;position:relative}
+.loginpanel::after{content:'';position:absolute;inset:0;background:var(--brush);opacity:.5;border-radius:18px;pointer-events:none}
+.lbrand{display:flex;align-items:center;gap:9px;color:var(--brass-dk);font-family:var(--disp);font-weight:700;letter-spacing:.08em;font-size:13px;margin-bottom:14px;position:relative}
+.loginpanel h2{font-family:var(--disp);margin:0 0 4px;color:#1c212a;font-size:24px;position:relative}
+.loginpanel p{margin:0 0 18px;font-size:12px;color:#5c636f;position:relative}
+.lf{position:relative;width:100%;padding:13px;margin-bottom:11px;border:1px solid var(--line);border-radius:12px;font-family:var(--ui);
+  font-size:14px;background:linear-gradient(180deg,#eef1f6,#dde2ea);box-shadow:inset 0 2px 4px rgba(0,0,0,.12)}
+.lbtn{position:relative;width:100%;border:1px solid #1f5e3e;border-radius:13px;padding:15px;font-family:var(--disp);font-weight:700;
+  font-size:16px;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.4);cursor:pointer;
+  background:linear-gradient(180deg,#46b07c,#2f9061 52%,#236e49);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 5px 12px rgba(0,0,0,.4)}
+.lbtn:disabled{filter:grayscale(.5) opacity(.7)}
+.lerr{position:relative;color:var(--red);font-size:12.5px;margin-bottom:10px;min-height:16px;font-family:var(--ui)}
+
+@media (prefers-reduced-motion: reduce){
+  .rec.fire .stamp,.rec.leave,.rec.enter{animation:none!important}.rail i,.toast{transition:none}
+  .rec.fire .stamp{opacity:1}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="htop">
+      <div class="agent"><div class="agbadge" id="agbadge"></div><div><b id="agentn">Arti</b><small>On the desk · Jabalpur</small></div></div>
+      <div class="tally"><b id="st-done">0</b><span>Calls today</span></div>
+    </div>
+    <div class="rail"><i id="rail" style="width:0%"></i></div>
+    <div class="railnum"><span id="rl-reach">0 reached</span><span id="rl-left">0 left in list</span></div>
+  </header>
+
+  <div class="body">
+    <section class="view on" id="v-call"><div class="stage" id="stage"></div></section>
+    <section class="view" id="v-callers"><div class="sechead"><span class="si" id="h-callers"></span>Callers — today</div><div id="callerlist"></div></section>
+    <section class="view" id="v-lists"><div class="sechead"><span class="si" id="h-lists"></span>Lists</div><div id="listwrap"></div></section>
+    <section class="view" id="v-set">
+      <div id="acct"></div>
+      <div class="sechead"><span class="si" id="h-set"></span>Outcomes</div>
+      <div id="ocset"></div>
+      <div class="row"><span>Stamp &amp; jump to next number</span><b style="color:var(--green);font-family:var(--disp)">On</b></div>
+      <div class="row"><span>Note field on the card</span><b style="color:var(--green);font-family:var(--disp)">On</b></div>
+      <button class="skip" style="border-color:var(--red);color:var(--red);margin-top:14px" onclick="resetAll()">Reset today's progress</button>
+      <div class="note2">Prototype — sample of 1000 live numbers from JABALPUR_CLEAN.xlsx.<br>Outcomes save on this device.</div>
+    </section>
+  </div>
+
+  <div class="sheetbg" id="cbbg">
+    <div class="sheet" role="dialog" aria-label="Schedule call back">
+      <h4><span class="si" id="h-cb"></span>Schedule call back</h4>
+      <div class="sub" id="cbwho">When should we ring back?</div>
+      <div class="cbgrid" id="cbgrid"></div>
+      <div class="cbcustom"><label for="cbinput">Custom</label><input type="datetime-local" id="cbinput"/></div>
+      <div class="sheetbtns"><button class="b-cancel" onclick="closeCallback()">Cancel</button><button class="b-go" onclick="confirmCallback()">Set call back</button></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <nav>
+    <button class="on" data-v="call" data-ic="phone" data-lbl="Desk"></button>
+    <button data-v="callers" data-ic="users" data-lbl="Callers"></button>
+    <button data-v="lists" data-ic="folder" data-lbl="Lists"></button>
+    <button data-v="set" data-ic="settings" data-lbl="Setup"></button>
+  </nav>
+</div>
+
+<script>
+const CONTACTS=[{"d": "JABALPUR", "n": "Arti", "m": "6269778643"}, {"d": "JABALPUR", "n": "Arti", "m": "7447071925"}, {"d": "JABALPUR", "n": "Monu", "m": "7489951831"}, {"d": "JABALPUR", "n": "Kaju", "m": "7987063503"}, {"d": "JABALPUR", "n": "Kalu", "m": "8120830413"}, {"d": "JABALPUR", "n": "Kodu", "m": "8815082478"}, {"d": "JABALPUR", "n": "Lavi", "m": "9300125862"}, {"d": "JABALPUR", "n": "Usha", "m": "9300455390"}, {"d": "JABALPUR", "n": "Mona", "m": "8959041302"}, {"d": "JABALPUR", "n": "Rani", "m": "9303995410"}, {"d": "JABALPUR", "n": "Bebi", "m": "9098064592"}, {"d": "JABALPUR", "n": "Sonu", "m": "9174728681"}, {"d": "JABALPUR", "n": "Sima", "m": "9630854994"}, {"d": "JABALPUR", "n": "Ranu", "m": "9993608775"}, {"d": "JABALPUR", "n": "Raja", "m": "6232558744"}, {"d": "JABALPUR", "n": "Amit", "m": "6260279373"}, {"d": "JABALPUR", "n": "Rama", "m": "6260882101"}, {"d": "JABALPUR", "n": "Sanu", "m": "8878678080"}, {"d": "JABALPUR", "n": "Adil", "m": "9300086081"}, {"d": "JABALPUR", "n": "Ranu", "m": "9303362534"}, {"d": "JABALPUR", "n": "Neha", "m": "9425132587"}, {"d": "JABALPUR", "n": "Neha", "m": "9630598344"}, {"d": "JABALPUR", "n": "Arti", "m": "7987841297"}, {"d": "JABALPUR", "n": "Puna", "m": "8120126889"}, {"d": "JABALPUR", "n": "Amit", "m": "9039131523"}, {"d": "JABALPUR", "n": "Annu", "m": "9301420794"}, {"d": "JABALPUR", "n": "Hema", "m": "9752909439"}, {"d": "JABALPUR", "n": "Arif", "m": "9827307883"}, {"d": "JABALPUR", "n": "Asha", "m": "9301695629"}, {"d": "JABALPUR", "n": "Indu", "m": "9981474049"}, {"d": "JABALPUR", "n": "Puja", "m": "9399627801"}, {"d": "JABALPUR", "n": "Raju", "m": "9424657925"}, {"d": "JABALPUR", "n": "Rais", "m": "9827193726"}, {"d": "JABALPUR", "n": "Jite", "m": "6268473288"}, {"d": "JABALPUR", "n": "Amit", "m": "7773893525"}, {"d": "JABALPUR", "n": "Arti", "m": "7826234654"}, {"d": "JABALPUR", "n": "Anil", "m": "9174829200"}, {"d": "JABALPUR", "n": "Ajya", "m": "7828529775"}, {"d": "JABALPUR", "n": "Mona", "m": "6260484601"}, {"d": "JABALPUR", "n": "Golu", "m": "8056656565"}, {"d": "JABALPUR", "n": "Raja", "m": "6268617696"}, {"d": "JABALPUR", "n": "Arti", "m": "8461805134"}, {"d": "JABALPUR", "n": "Aman", "m": "7000383414"}, {"d": "JABALPUR", "n": "Deva", "m": "7440502613"}, {"d": "JABALPUR", "n": "Golu", "m": "8906500798"}, {"d": "JABALPUR", "n": "Neha", "m": "7489452328"}, {"d": "JABALPUR", "n": "Rupa", "m": "6264295061"}, {"d": "JABALPUR", "n": "Asha", "m": "7696691516"}, {"d": "JABALPUR", "n": "Arti", "m": "9888417561"}, {"d": "JABALPUR", "n": "Asha", "m": "7440825211"}, {"d": "JABALPUR", "n": "Ajay", "m": "7489567555"}, {"d": "JABALPUR", "n": "Som", "m": "7566682592"}, {"d": "JABALPUR", "n": "Amit", "m": "9174682995"}, {"d": "JABALPUR", "n": "Arti", "m": "9300256897"}, {"d": "JABALPUR", "n": "Mona", "m": "9522112252"}, {"d": "JABALPUR", "n": "Sonu", "m": "9975252156"}, {"d": "JABALPUR", "n": "Aman", "m": "9669043245"}, {"d": "JABALPUR", "n": "Ajay", "m": "9715733618"}, {"d": "JABALPUR", "n": "Ajay", "m": "7879177377"}, {"d": "JABALPUR", "n": "Kalu", "m": "9977568228"}, {"d": "JABALPUR", "n": "Uma", "m": "6260163125"}, {"d": "JABALPUR", "n": "Neha", "m": "6265362662"}, {"d": "JABALPUR", "n": "Asha", "m": "8305515223"}, {"d": "JABALPUR", "n": "Maya", "m": "6266328133"}, {"d": "JABALPUR", "n": "Sonu", "m": "7470899305"}, {"d": "JABALPUR", "n": "Usha", "m": "9977708802"}, {"d": "JABALPUR", "n": "Arti", "m": "7509154252"}, {"d": "JABALPUR", "n": "Jaya", "m": "7723807755"}, {"d": "JABALPUR", "n": "Arti", "m": "9131023853"}, {"d": "JABALPUR", "n": "Devi", "m": "7824100325"}, {"d": "JABALPUR", "n": "Bebi", "m": "9302677969"}, {"d": "JABALPUR", "n": "Rani", "m": "8223802119"}, {"d": "JABALPUR", "n": "Maya", "m": "9301071700"}, {"d": "JABALPUR", "n": "Ritu", "m": "8435493071"}, {"d": "JABALPUR", "n": "Raju", "m": "9589808019"}, {"d": "JABALPUR", "n": "Gola", "m": "8827551455"}, {"d": "JABALPUR", "n": "Abda", "m": "9630860152"}, {"d": "JABALPUR", "n": "Anil", "m": "8878088835"}, {"d": "JABALPUR", "n": "Raj", "m": "8959305843"}, {"d": "JABALPUR", "n": "Sita", "m": "9753320643"}, {"d": "JABALPUR", "n": "Hari", "m": "9009521201"}, {"d": "JABALPUR", "n": "Asha", "m": "9755454544"}, {"d": "JABALPUR", "n": "Golu", "m": "9174979099"}, {"d": "JABALPUR", "n": "Maya", "m": "9926474402"}, {"d": "JABALPUR", "n": "Arti", "m": "8827755842"}, {"d": "JABALPUR", "n": "Anil", "m": "9300442637"}, {"d": "JABALPUR", "n": "Rama", "m": "9993991516"}, {"d": "JABALPUR", "n": "Rama", "m": "7772001435"}, {"d": "JABALPUR", "n": "Ajay", "m": "6261509318"}, {"d": "JABALPUR", "n": "Neha", "m": "8305099350"}, {"d": "JABALPUR", "n": "Ranu", "m": "7617207288"}, {"d": "JABALPUR", "n": "Ajay", "m": "9285452118"}, {"d": "JABALPUR", "n": "Arti", "m": "9301067670"}, {"d": "JABALPUR", "n": "Arsh", "m": "9301714286"}, {"d": "JABALPUR", "n": "Asha", "m": "9303817212"}, {"d": "JABALPUR", "n": "Anjo", "m": "9329744620"}, {"d": "JABALPUR", "n": "Anil", "m": "9522125601"}, {"d": "JABALPUR", "n": "Riya", "m": "8745965885"}, {"d": "JABALPUR", "n": "Asha", "m": "9644029965"}, {"d": "JABALPUR", "n": "Rani", "m": "8827177697"}, {"d": "JABALPUR", "n": "Amit", "m": "8085412651"}, {"d": "JABALPUR", "n": "Asha", "m": "8109339067"}, {"d": "JABALPUR", "n": "Amit", "m": "8982263476"}, {"d": "JABALPUR", "n": "Rubi", "m": "9098707365"}, {"d": "JABALPUR", "n": "Amit", "m": "8461013221"}, {"d": "JABALPUR", "n": "Neha", "m": "8517930187"}, {"d": "JABALPUR", "n": "Rani", "m": "9893615995"}, {"d": "JABALPUR", "n": "Maya", "m": "9926184541"}, {"d": "JABALPUR", "n": "Maya", "m": "9752167045"}, {"d": "JABALPUR", "n": "Anil", "m": "9993496968"}, {"d": "JABALPUR", "n": "Seva", "m": "9993981385"}, {"d": "JABALPUR", "n": "Uma", "m": "6264868183"}, {"d": "JABALPUR", "n": "Aram", "m": "6268438665"}, {"d": "JABALPUR", "n": "Arun", "m": "7354911779"}, {"d": "JABALPUR", "n": "Hema", "m": "7697534108"}, {"d": "JABALPUR", "n": "Lata", "m": "6263332624"}, {"d": "JABALPUR", "n": "Raju", "m": "7000522650"}, {"d": "JABALPUR", "n": "Syam", "m": "7415555997"}, {"d": "JABALPUR", "n": "Sonu", "m": "7610535995"}, {"d": "JABALPUR", "n": "Raju", "m": "7771077345"}, {"d": "JABALPUR", "n": "Ravi", "m": "7869260938"}, {"d": "JABALPUR", "n": "Asha", "m": "7879744714"}, {"d": "JABALPUR", "n": "Amit", "m": "9993336922"}, {"d": "JABALPUR", "n": "Uma", "m": "7987170206"}, {"d": "JABALPUR", "n": "Arti", "m": "8103159423"}, {"d": "JABALPUR", "n": "Rama", "m": "8349431522"}, {"d": "JABALPUR", "n": "Beni", "m": "8435682246"}, {"d": "JABALPUR", "n": "Hina", "m": "9303242463"}, {"d": "JABALPUR", "n": "Usha", "m": "8989891692"}, {"d": "JABALPUR", "n": "Maya", "m": "9109015347"}, {"d": "JABALPUR", "n": "Raju", "m": "9109936841"}, {"d": "JABALPUR", "n": "Anil", "m": "9827815304"}, {"d": "JABALPUR", "n": "Bina", "m": "9893450260"}, {"d": "JABALPUR", "n": "Alka", "m": "9993713881"}, {"d": "JABALPUR", "n": "Jaya", "m": "6232991160"}, {"d": "JABALPUR", "n": "Ajay", "m": "6256565986"}, {"d": "JABALPUR", "n": "Sanu", "m": "6263558918"}, {"d": "JABALPUR", "n": "Neha", "m": "7223074295"}, {"d": "JABALPUR", "n": "Ajay", "m": "7999803204"}, {"d": "JABALPUR", "n": "Anil", "m": "9285154833"}, {"d": "JABALPUR", "n": "Usha", "m": "9300133339"}, {"d": "JABALPUR", "n": "Lata", "m": "9407258249"}, {"d": "JABALPUR", "n": "Rani", "m": "9685449226"}, {"d": "JABALPUR", "n": "Kavi", "m": "6267831626"}, {"d": "JABALPUR", "n": "Uma", "m": "8959889191"}, {"d": "JABALPUR", "n": "Lina", "m": "7000081585"}, {"d": "JABALPUR", "n": "Arti", "m": "8516058624"}, {"d": "JABALPUR", "n": "Ajay", "m": "7507914805"}, {"d": "JABALPUR", "n": "Sonu", "m": "8823886657"}, {"d": "JABALPUR", "n": "RANI", "m": "9009931313"}, {"d": "JABALPUR", "n": "PARO", "m": "9131481276"}, {"d": "JABALPUR", "n": "Mani", "m": "7869190095"}, {"d": "JABALPUR", "n": "Juhi", "m": "9301818405"}, {"d": "JABALPUR", "n": "Arun", "m": "9302317096"}, {"d": "JABALPUR", "n": "Abda", "m": "7974946211"}, {"d": "JABALPUR", "n": "Arti", "m": "9424083205"}, {"d": "JABALPUR", "n": "Amit", "m": "9458695363"}, {"d": "JABALPUR", "n": "Usha", "m": "8085197771"}, {"d": "JABALPUR", "n": "Rani", "m": "8305764207"}, {"d": "JABALPUR", "n": "Neha", "m": "9654566222"}, {"d": "JABALPUR", "n": "Maya", "m": "8319660135"}, {"d": "JABALPUR", "n": "Asha", "m": "8462082131"}, {"d": "JABALPUR", "n": "Neha", "m": "7828712398"}, {"d": "JABALPUR", "n": "Sima", "m": "6848969451"}, {"d": "JABALPUR", "n": "RANU", "m": "8085795694"}, {"d": "JABALPUR", "n": "Arti", "m": "8120235217"}, {"d": "JABALPUR", "n": "Anil", "m": "8359858050"}, {"d": "JABALPUR", "n": "Anil", "m": "6264163755"}, {"d": "JABALPUR", "n": "Asha", "m": "7241161119"}, {"d": "JABALPUR", "n": "Raju", "m": "8827960337"}, {"d": "JABALPUR", "n": "Arti", "m": "7489083494"}, {"d": "JABALPUR", "n": "Uma", "m": "8956463585"}, {"d": "JABALPUR", "n": "Arti", "m": "7869068884"}, {"d": "JABALPUR", "n": "Mahi", "m": "7489125712"}, {"d": "JABALPUR", "n": "Sana", "m": "8305973043"}, {"d": "JABALPUR", "n": "Asha", "m": "9424727416"}, {"d": "JABALPUR", "n": "Ajay", "m": "9575393407"}, {"d": "JABALPUR", "n": "Raju", "m": "9584506312"}, {"d": "JABALPUR", "n": "Riya", "m": "9000009998"}, {"d": "JABALPUR", "n": "Anjo", "m": "9630795562"}, {"d": "JABALPUR", "n": "Ajju", "m": "9755225584"}, {"d": "JABALPUR", "n": "Arun", "m": "9131198740"}, {"d": "JABALPUR", "n": "Usha", "m": "6261855819"}, {"d": "JABALPUR", "n": "Uma", "m": "9165430686"}, {"d": "JABALPUR", "n": "Alka", "m": "9300402778"}, {"d": "JABALPUR", "n": "Anil", "m": "6265008848"}, {"d": "JABALPUR", "n": "Arti", "m": "6266273394"}, {"d": "JABALPUR", "n": "Sita", "m": "9907688829"}, {"d": "JABALPUR", "n": "Amar", "m": "9300875672"}, {"d": "JABALPUR", "n": "Usha", "m": "9302111936"}, {"d": "JABALPUR", "n": "Lila", "m": "9302521107"}, {"d": "JABALPUR", "n": "Raja", "m": "9340563125"}, {"d": "JABALPUR", "n": "Sonu", "m": "7223840562"}, {"d": "JABALPUR", "n": "Raj", "m": "9589033759"}, {"d": "JABALPUR", "n": "Arti", "m": "9713161717"}, {"d": "JABALPUR", "n": "Baby", "m": "7828352856"}, {"d": "JABALPUR", "n": "Ajay", "m": "7862222222"}, {"d": "JABALPUR", "n": "Ravi", "m": "9009498673"}, {"d": "JABALPUR", "n": "Maya", "m": "8305006216"}, {"d": "JABALPUR", "n": "Atia", "m": "8770530006"}, {"d": "JABALPUR", "n": "Uma", "m": "9098083200"}, {"d": "JABALPUR", "n": "Arun", "m": "9617665358"}, {"d": "JABALPUR", "n": "Rani", "m": "9752982930"}, {"d": "JABALPUR", "n": "Ritu", "m": "9754758707"}, {"d": "JABALPUR", "n": "Neha", "m": "9926633056"}, {"d": "JABALPUR", "n": "Jaya", "m": "9381102944"}, {"d": "JABALPUR", "n": "Asha", "m": "6260910951"}, {"d": "JABALPUR", "n": "Ritu", "m": "6262889486"}, {"d": "JABALPUR", "n": "Usha", "m": "6264389479"}, {"d": "JABALPUR", "n": "Atul", "m": "6264532223"}, {"d": "JABALPUR", "n": "Asha", "m": "7089638318"}, {"d": "JABALPUR", "n": "Riya", "m": "7389267346"}, {"d": "JABALPUR", "n": "Lata", "m": "7440264153"}, {"d": "JABALPUR", "n": "Lata", "m": "9926090442"}, {"d": "JABALPUR", "n": "Raju", "m": "7898505346"}, {"d": "JABALPUR", "n": "Arun", "m": "8120447479"}, {"d": "JABALPUR", "n": "Arti", "m": "8224914740"}, {"d": "JABALPUR", "n": "Raj", "m": "8319273301"}, {"d": "JABALPUR", "n": "Neha", "m": "7987369342"}, {"d": "JABALPUR", "n": "Uma", "m": "8224011042"}, {"d": "JABALPUR", "n": "Anuj", "m": "8517905995"}, {"d": "JABALPUR", "n": "Maya", "m": "8827838268"}, {"d": "JABALPUR", "n": "Beni", "m": "6260074547"}, {"d": "JABALPUR", "n": "Arif", "m": "8602174581"}, {"d": "JABALPUR", "n": "Ritu", "m": "6326478458"}, {"d": "JABALPUR", "n": "Asha", "m": "9098948526"}, {"d": "JABALPUR", "n": "Raju", "m": "9165284375"}, {"d": "JABALPUR", "n": "Anil", "m": "9179894559"}, {"d": "JABALPUR", "n": "Asha", "m": "7440581200"}, {"d": "JABALPUR", "n": "Raju", "m": "6464476797"}, {"d": "JABALPUR", "n": "Raju", "m": "7024579348"}, {"d": "JABALPUR", "n": "Amit", "m": "7693075782"}, {"d": "JABALPUR", "n": "Raja", "m": "7804072367"}, {"d": "JABALPUR", "n": "Rani", "m": "7489410903"}, {"d": "JABALPUR", "n": "Ajay", "m": "9522723869"}, {"d": "JABALPUR", "n": "Asha", "m": "9770285290"}, {"d": "JABALPUR", "n": "Maya", "m": "9630927215"}, {"d": "JABALPUR", "n": "Arun", "m": "9826266532"}, {"d": "JABALPUR", "n": "Maya", "m": "7697331172"}, {"d": "JABALPUR", "n": "Sanu", "m": "7828289277"}, {"d": "JABALPUR", "n": "Arti", "m": "7828634921"}, {"d": "JABALPUR", "n": "Ranu", "m": "9981665317"}, {"d": "JABALPUR", "n": "Raju", "m": "8223982950"}, {"d": "JABALPUR", "n": "Alka", "m": "8517977788"}, {"d": "JABALPUR", "n": "Jiji", "m": "8520896532"}, {"d": "JABALPUR", "n": "Sonu", "m": "8664646846"}, {"d": "JABALPUR", "n": "Amit", "m": "9988675666"}, {"d": "JABALPUR", "n": "Raja", "m": "6262963662"}, {"d": "JABALPUR", "n": "Hema", "m": "6261898083"}, {"d": "JABALPUR", "n": "Usha", "m": "6265170812"}, {"d": "JABALPUR", "n": "Raja", "m": "9098604386"}, {"d": "JABALPUR", "n": "Manu", "m": "9111631280"}, {"d": "JABALPUR", "n": "Ritu", "m": "6268544531"}, {"d": "JABALPUR", "n": "Aman", "m": "7049520349"}, {"d": "JABALPUR", "n": "Anil", "m": "9165121067"}, {"d": "JABALPUR", "n": "Ranu", "m": "9179329065"}, {"d": "JABALPUR", "n": "Ayaj", "m": "9302129077"}, {"d": "JABALPUR", "n": "Ajay", "m": "7654321890"}, {"d": "JABALPUR", "n": "Hema", "m": "9329259445"}, {"d": "JABALPUR", "n": "Lata", "m": "9300975324"}, {"d": "JABALPUR", "n": "Tesu", "m": "7898653998"}, {"d": "JABALPUR", "n": "Sona", "m": "9630639069"}, {"d": "JABALPUR", "n": "Anil", "m": "8085909652"}, {"d": "JABALPUR", "n": "Ajay", "m": "8818837635"}, {"d": "JABALPUR", "n": "Arti", "m": "8889244417"}, {"d": "JABALPUR", "n": "Rauf", "m": "8839183492"}, {"d": "JABALPUR", "n": "Arti", "m": "6263537641"}, {"d": "JABALPUR", "n": "Asif", "m": "7777871635"}, {"d": "JABALPUR", "n": "Neha", "m": "6265790578"}, {"d": "JABALPUR", "n": "Viya", "m": "7161225963"}, {"d": "JABALPUR", "n": "Anil", "m": "9303344369"}, {"d": "JABALPUR", "n": "Raju", "m": "9303993357"}, {"d": "JABALPUR", "n": "Asha", "m": "9329131152"}, {"d": "JABALPUR", "n": "Beni", "m": "9575138023"}, {"d": "JABALPUR", "n": "Sonu", "m": "7869465386"}, {"d": "JABALPUR", "n": "ASHA", "m": "7974066270"}, {"d": "JABALPUR", "n": "Mote", "m": "7894565622"}, {"d": "JABALPUR", "n": "Annu", "m": "8718019720"}, {"d": "JABALPUR", "n": "Neha", "m": "8359969047"}, {"d": "JABALPUR", "n": "Asha", "m": "9981696231"}, {"d": "JABALPUR", "n": "Uma", "m": "9300517106"}, {"d": "JABALPUR", "n": "Anil", "m": "7049359861"}, {"d": "JABALPUR", "n": "rubi", "m": "7439921754"}, {"d": "JABALPUR", "n": "Ajay", "m": "6260766141"}, {"d": "JABALPUR", "n": "Ramu", "m": "6263689288"}, {"d": "JABALPUR", "n": "Anil", "m": "6266594141"}, {"d": "JABALPUR", "n": "Neha", "m": "6267541537"}, {"d": "JABALPUR", "n": "Sonu", "m": "9329400804"}, {"d": "JABALPUR", "n": "ASHA", "m": "7828461281"}, {"d": "JABALPUR", "n": "Amit", "m": "9329640153"}, {"d": "JABALPUR", "n": "Rona", "m": "9703017776"}, {"d": "JABALPUR", "n": "Tanu", "m": "7879772946"}, {"d": "JABALPUR", "n": "Maya", "m": "7909406766"}, {"d": "JABALPUR", "n": "rupa", "m": "8120201132"}, {"d": "JABALPUR", "n": "Lata", "m": "8219937320"}, {"d": "JABALPUR", "n": "Neha", "m": "8319788910"}, {"d": "JABALPUR", "n": "Neha", "m": "8435142047"}, {"d": "JABALPUR", "n": "Rani", "m": "9644383223"}, {"d": "JABALPUR", "n": "Neha", "m": "9691180056"}, {"d": "JABALPUR", "n": "Anjo", "m": "9770358630"}, {"d": "JABALPUR", "n": "Anil", "m": "9893223960"}, {"d": "JABALPUR", "n": "Golu", "m": "9726409389"}, {"d": "JABALPUR", "n": "Ranu", "m": "9755034821"}, {"d": "JABALPUR", "n": "Amit", "m": "8778588789"}, {"d": "JABALPUR", "n": "Arti", "m": "8815140745"}, {"d": "JABALPUR", "n": "Said", "m": "8817581592"}, {"d": "JABALPUR", "n": "Usha", "m": "9755709610"}, {"d": "JABALPUR", "n": "Raja", "m": "9755805136"}, {"d": "JABALPUR", "n": "Usha", "m": "9981572523"}, {"d": "JABALPUR", "n": "Arti", "m": "9893833027"}, {"d": "JABALPUR", "n": "Ansh", "m": "9926476864"}, {"d": "JABALPUR", "n": "Anil", "m": "9981054853"}, {"d": "JABALPUR", "n": "Ritu", "m": "9987665668"}, {"d": "JABALPUR", "n": "Antu", "m": "6266623235"}, {"d": "JABALPUR", "n": "Fiza", "m": "9109246728"}, {"d": "JABALPUR", "n": "Ajay", "m": "9993040329"}, {"d": "JABALPUR", "n": "Sonu", "m": "6269329357"}, {"d": "JABALPUR", "n": "Riya", "m": "9165988769"}, {"d": "JABALPUR", "n": "Mahu", "m": "7489368930"}, {"d": "JABALPUR", "n": "Jaya", "m": "9179731756"}, {"d": "JABALPUR", "n": "Arti", "m": "9340199946"}, {"d": "JABALPUR", "n": "Ajay", "m": "9284447640"}, {"d": "JABALPUR", "n": "Rubi", "m": "9301992773"}, {"d": "JABALPUR", "n": "Ravi", "m": "9516471025"}, {"d": "JABALPUR", "n": "Rani", "m": "9659154841"}, {"d": "JABALPUR", "n": "Anil", "m": "7772053851"}, {"d": "JABALPUR", "n": "Puja", "m": "7819226384"}, {"d": "JABALPUR", "n": "Hari", "m": "8305659663"}, {"d": "JABALPUR", "n": "Risv", "m": "9669716277"}, {"d": "JABALPUR", "n": "Bebi", "m": "9755625590"}, {"d": "JABALPUR", "n": "Ujma", "m": "8770473887"}, {"d": "JABALPUR", "n": "Gori", "m": "9827564315"}, {"d": "JABALPUR", "n": "Raja", "m": "8839083187"}, {"d": "JABALPUR", "n": "Riya", "m": "6266041665"}, {"d": "JABALPUR", "n": "Ram", "m": "8878251878"}, {"d": "JABALPUR", "n": "Ranu", "m": "8959010273"}, {"d": "JABALPUR", "n": "Anuj", "m": "9111046425"}, {"d": "JABALPUR", "n": "Ajay", "m": "9300460906"}, {"d": "JABALPUR", "n": "Ravi", "m": "9009264133"}, {"d": "JABALPUR", "n": "Arti", "m": "7440460449"}, {"d": "JABALPUR", "n": "Arti", "m": "6565545854"}, {"d": "JABALPUR", "n": "Sonu", "m": "7089872136"}, {"d": "JABALPUR", "n": "Annu", "m": "7489767703"}, {"d": "JABALPUR", "n": "Maya", "m": "7582079515"}, {"d": "JABALPUR", "n": "Ranu", "m": "7694051140"}, {"d": "JABALPUR", "n": "Ajay", "m": "7828965522"}, {"d": "JABALPUR", "n": "Manu", "m": "7694025445"}, {"d": "JABALPUR", "n": "Smit", "m": "7896543132"}, {"d": "JABALPUR", "n": "Sonu", "m": "7974409529"}, {"d": "JABALPUR", "n": "Kaju", "m": "8226084804"}, {"d": "JABALPUR", "n": "Rita", "m": "9713223687"}, {"d": "JABALPUR", "n": "Mona", "m": "8085424696"}, {"d": "JABALPUR", "n": "Neha", "m": "8305454989"}, {"d": "JABALPUR", "n": "Lata", "m": "9827505669"}, {"d": "JABALPUR", "n": "Ravi", "m": "8358061612"}, {"d": "JABALPUR", "n": "Raju", "m": "8519020688"}, {"d": "JABALPUR", "n": "Raj", "m": "8717896114"}, {"d": "JABALPUR", "n": "Anni", "m": "9907212529"}, {"d": "JABALPUR", "n": "Soni", "m": "9926001016"}, {"d": "JABALPUR", "n": "Ravi", "m": "9977429312"}, {"d": "JABALPUR", "n": "Sona", "m": "9981802474"}, {"d": "JABALPUR", "n": "Ravi", "m": "6263500792"}, {"d": "JABALPUR", "n": "Arti", "m": "6268072266"}, {"d": "JABALPUR", "n": "Rani", "m": "8882572949"}, {"d": "JABALPUR", "n": "Ranu", "m": "6266824166"}, {"d": "JABALPUR", "n": "Uma", "m": "7804075953"}, {"d": "JABALPUR", "n": "Neha", "m": "9300890526"}, {"d": "JABALPUR", "n": "Ravi", "m": "9301662149"}, {"d": "JABALPUR", "n": "Ajay", "m": "9399420341"}, {"d": "JABALPUR", "n": "Sonu", "m": "7875646787"}, {"d": "JABALPUR", "n": "Asha", "m": "9617751153"}, {"d": "JABALPUR", "n": "Sani", "m": "7987532489"}, {"d": "JABALPUR", "n": "Vijy", "m": "9713602296"}, {"d": "JABALPUR", "n": "Raju", "m": "9752779828"}, {"d": "JABALPUR", "n": "Hema", "m": "8349246415"}, {"d": "JABALPUR", "n": "Atul", "m": "8875543546"}, {"d": "JABALPUR", "n": "Anil", "m": "8358930670"}, {"d": "JABALPUR", "n": "Neha", "m": "8745656123"}, {"d": "JABALPUR", "n": "Ravi", "m": "9131473045"}, {"d": "JABALPUR", "n": "Anju", "m": "9300901853"}, {"d": "JABALPUR", "n": "Neha", "m": "9303251649"}, {"d": "JABALPUR", "n": "Asha", "m": "9977520490"}, {"d": "JABALPUR", "n": "Asha", "m": "9993627678"}, {"d": "JABALPUR", "n": "Anjo", "m": "6276765343"}, {"d": "JABALPUR", "n": "Rani", "m": "6926531265"}, {"d": "JABALPUR", "n": "Maya", "m": "9301273037"}, {"d": "JABALPUR", "n": "Nitu", "m": "7247037381"}, {"d": "JABALPUR", "n": "Arti", "m": "7440279330"}, {"d": "JABALPUR", "n": "Anju", "m": "9329576781"}, {"d": "JABALPUR", "n": "Uzma", "m": "9326565555"}, {"d": "JABALPUR", "n": "Motu", "m": "7489329914"}, {"d": "JABALPUR", "n": "Asha", "m": "9329294490"}, {"d": "JABALPUR", "n": "Uday", "m": "8305893206"}, {"d": "JABALPUR", "n": "Arti", "m": "7694814903"}, {"d": "JABALPUR", "n": "Alok", "m": "7879297953"}, {"d": "JABALPUR", "n": "Amit", "m": "7889678566"}, {"d": "JABALPUR", "n": "Deva", "m": "8225072307"}, {"d": "JABALPUR", "n": "Sonu", "m": "9898545444"}, {"d": "JABALPUR", "n": "Atul", "m": "8959641035"}, {"d": "JABALPUR", "n": "Ajay", "m": "6260134045"}, {"d": "JABALPUR", "n": "Neha", "m": "6263874591"}, {"d": "JABALPUR", "n": "Renu", "m": "8817115191"}, {"d": "JABALPUR", "n": "Ramu", "m": "8865465421"}, {"d": "JABALPUR", "n": "Rupa", "m": "9285147140"}, {"d": "JABALPUR", "n": "Ravi", "m": "6265498899"}, {"d": "JABALPUR", "n": "Raja", "m": "7415671713"}, {"d": "JABALPUR", "n": "Raja", "m": "9302009241"}, {"d": "JABALPUR", "n": "Idve", "m": "9302219112"}, {"d": "JABALPUR", "n": "Amit", "m": "9302639391"}, {"d": "JABALPUR", "n": "Arti", "m": "9399184540"}, {"d": "JABALPUR", "n": "Ajad", "m": "9685466975"}, {"d": "JABALPUR", "n": "Maya", "m": "9617309931"}, {"d": "JABALPUR", "n": "Neha", "m": "7747935911"}, {"d": "JABALPUR", "n": "Raju", "m": "7828278719"}, {"d": "JABALPUR", "n": "Asha", "m": "9755670965"}, {"d": "JABALPUR", "n": "Bevi", "m": "8225870163"}, {"d": "JABALPUR", "n": "Ansh", "m": "9713568161"}, {"d": "JABALPUR", "n": "Ravi", "m": "9746331508"}, {"d": "JABALPUR", "n": "Ayaj", "m": "9755727726"}, {"d": "JABALPUR", "n": "Sonu", "m": "9793263422"}, {"d": "JABALPUR", "n": "Asha", "m": "9826620795"}, {"d": "JABALPUR", "n": "Atul", "m": "9894189189"}, {"d": "JABALPUR", "n": "Alok", "m": "9827620452"}, {"d": "JABALPUR", "n": "Anil", "m": "6260146997"}, {"d": "JABALPUR", "n": "Ajay", "m": "9926986186"}, {"d": "JABALPUR", "n": "Raju", "m": "8569874566"}, {"d": "JABALPUR", "n": "Raju", "m": "9301052799"}, {"d": "JABALPUR", "n": "Neha", "m": "9074568548"}, {"d": "JABALPUR", "n": "Dipa", "m": "9098856794"}, {"d": "JABALPUR", "n": "Arti", "m": "6201851746"}, {"d": "JABALPUR", "n": "Arun", "m": "9302736003"}, {"d": "JABALPUR", "n": "Usha", "m": "6268258508"}, {"d": "JABALPUR", "n": "Rani", "m": "7489993844"}, {"d": "JABALPUR", "n": "Neha", "m": "7748048970"}, {"d": "JABALPUR", "n": "Ajay", "m": "7803842152"}, {"d": "JABALPUR", "n": "Neha", "m": "7880212613"}, {"d": "JABALPUR", "n": "Arti", "m": "8085508728"}, {"d": "JABALPUR", "n": "Atul", "m": "8463099290"}, {"d": "JABALPUR", "n": "Kodu", "m": "8562336595"}, {"d": "JABALPUR", "n": "Maya", "m": "9131439142"}, {"d": "JABALPUR", "n": "Bali", "m": "9265940285"}, {"d": "JABALPUR", "n": "Maya", "m": "9399892371"}, {"d": "JABALPUR", "n": "Asha", "m": "8718829092"}, {"d": "JABALPUR", "n": "Ajay", "m": "8959297055"}, {"d": "JABALPUR", "n": "Atul", "m": "7582079684"}, {"d": "JABALPUR", "n": "Arti", "m": "9131066708"}, {"d": "JABALPUR", "n": "raja", "m": "7879782163"}, {"d": "JABALPUR", "n": "Neha", "m": "9303645361"}, {"d": "JABALPUR", "n": "Rupa", "m": "9329203233"}, {"d": "JABALPUR", "n": "Raja", "m": "7724960470"}, {"d": "JABALPUR", "n": "Ajay", "m": "9981754709"}, {"d": "JABALPUR", "n": "Maya", "m": "8085585510"}, {"d": "JABALPUR", "n": "Neha", "m": "8602205417"}, {"d": "JABALPUR", "n": "Maya", "m": "8871889327"}, {"d": "JABALPUR", "n": "Raju", "m": "9399794395"}, {"d": "JABALPUR", "n": "Raju", "m": "9589562651"}, {"d": "JABALPUR", "n": "Rupa", "m": "9685820801"}, {"d": "JABALPUR", "n": "Uma", "m": "9770332008"}, {"d": "JABALPUR", "n": "Raju", "m": "9770898343"}, {"d": "JABALPUR", "n": "Kala", "m": "9893209313"}, {"d": "JABALPUR", "n": "Asha", "m": "9993901140"}, {"d": "JABALPUR", "n": "Riya", "m": "6260085827"}, {"d": "JABALPUR", "n": "Uma", "m": "9993247686"}, {"d": "JABALPUR", "n": "Ansh", "m": "6425435636"}, {"d": "JABALPUR", "n": "Mnsu", "m": "6263079932"}, {"d": "JABALPUR", "n": "Maya", "m": "7000458101"}, {"d": "JABALPUR", "n": "Arti", "m": "8971445671"}, {"d": "JABALPUR", "n": "Rani", "m": "9009391484"}, {"d": "JABALPUR", "n": "Uma", "m": "7024301380"}, {"d": "JABALPUR", "n": "Raja", "m": "7389847519"}, {"d": "JABALPUR", "n": "Asha", "m": "7415555729"}, {"d": "JABALPUR", "n": "Ravi", "m": "7440892036"}, {"d": "JABALPUR", "n": "UDAY", "m": "7871714141"}, {"d": "JABALPUR", "n": "Usha", "m": "9303008153"}, {"d": "JABALPUR", "n": "Jaya", "m": "9303277754"}, {"d": "JABALPUR", "n": "Bebi", "m": "7987885544"}, {"d": "JABALPUR", "n": "Raju", "m": "8585626262"}, {"d": "JABALPUR", "n": "Raju", "m": "9516882589"}, {"d": "JABALPUR", "n": "Arti", "m": "9691051538"}, {"d": "JABALPUR", "n": "Sonu", "m": "8815254499"}, {"d": "JABALPUR", "n": "Ajay", "m": "8839273985"}, {"d": "JABALPUR", "n": "Ritu", "m": "9770883203"}, {"d": "JABALPUR", "n": "Parvati Patel", "m": "6263009081"}, {"d": "JABALPUR", "n": "Shiva", "m": "6263016715"}, {"d": "JABALPUR", "n": "Deepak", "m": "6263023179"}, {"d": "JABALPUR", "n": "Rohit Ahirwar", "m": "6263025418"}, {"d": "JABALPUR", "n": "Anjali", "m": "6263030158"}, {"d": "JABALPUR", "n": "Ansh Raikwar", "m": "6263044627"}, {"d": "JABALPUR", "n": "Hemvati Bai", "m": "6263052373"}, {"d": "JABALPUR", "n": "Sarswatee Bhujva", "m": "6263053285"}, {"d": "JABALPUR", "n": "Ramesh Singh Naite", "m": "6263075679"}, {"d": "JABALPUR", "n": "Aaryansh Dubey", "m": "6263082166"}, {"d": "JABALPUR", "n": "Chetram", "m": "6263105207"}, {"d": "JABALPUR", "n": "Geeta Bai", "m": "6263110577"}, {"d": "JABALPUR", "n": "Pritam Singh Maravi", "m": "6263118856"}, {"d": "JABALPUR", "n": "Rekha Raikwar", "m": "6263119008"}, {"d": "JABALPUR", "n": "Nikhlesh Chakravarti", "m": "6263124146"}, {"d": "JABALPUR", "n": "Chhotelal Chadar", "m": "6263131158"}, {"d": "JABALPUR", "n": "Laxmi Bai", "m": "6263136330"}, {"d": "JABALPUR", "n": "Suneel", "m": "6263139361"}, {"d": "JABALPUR", "n": "Neelu Bhumiya", "m": "6263151524"}, {"d": "JABALPUR", "n": "Shravan Sahu", "m": "6263155961"}, {"d": "JABALPUR", "n": "Shripal", "m": "6263183642"}, {"d": "JABALPUR", "n": "Bhagirath Singh", "m": "6263212121"}, {"d": "JABALPUR", "n": "Suman Bai", "m": "6263227837"}, {"d": "JABALPUR", "n": "Suman Sahu", "m": "6263232892"}, {"d": "JABALPUR", "n": "Ranu Kewat", "m": "6263251803"}, {"d": "JABALPUR", "n": "Neha", "m": "6263251850"}, {"d": "JABALPUR", "n": "Swati Choudhary", "m": "6263254123"}, {"d": "JABALPUR", "n": "Aarti", "m": "6263257657"}, {"d": "JABALPUR", "n": "Niketa Pathak", "m": "6263268613"}, {"d": "JABALPUR", "n": "Nirpat Gadari", "m": "6263273028"}, {"d": "JABALPUR", "n": "Rekha Chauhan", "m": "6263273808"}, {"d": "JABALPUR", "n": "Laksmi Dahiya", "m": "6263275528"}, {"d": "JABALPUR", "n": "Durga", "m": "6263285042"}, {"d": "JABALPUR", "n": "Sunil Vishwakarma", "m": "6263301918"}, {"d": "JABALPUR", "n": "Sandhya Bai", "m": "6263313202"}, {"d": "JABALPUR", "n": "Rozi Behna", "m": "6263316767"}, {"d": "JABALPUR", "n": "Panji Lal Kol", "m": "6263321896"}, {"d": "JABALPUR", "n": "Kiran Kori", "m": "6263341002"}, {"d": "JABALPUR", "n": "Anil", "m": "6263345958"}, {"d": "JABALPUR", "n": "Manjo", "m": "6263348808"}, {"d": "JABALPUR", "n": "Ajay Patel", "m": "6263365199"}, {"d": "JABALPUR", "n": "Goura Bai", "m": "6263383039"}, {"d": "JABALPUR", "n": "Sameem", "m": "6263386204"}, {"d": "JABALPUR", "n": "Jitendra Kumar Gadari", "m": "6263401072"}, {"d": "JABALPUR", "n": "Satyendra Lodhi", "m": "6263405401"}, {"d": "JABALPUR", "n": "Chhannu", "m": "6263412120"}, {"d": "JABALPUR", "n": "Shyam Singh Warkade", "m": "6263412995"}, {"d": "JABALPUR", "n": "Mohan", "m": "6263413873"}, {"d": "JABALPUR", "n": "Naveen Kumar Mishra", "m": "6263418341"}, {"d": "JABALPUR", "n": "Aradhana Bhumiya", "m": "6263418746"}, {"d": "JABALPUR", "n": "Vinita", "m": "6263419014"}, {"d": "JABALPUR", "n": "Raja Singh Kulste", "m": "6263424429"}, {"d": "JABALPUR", "n": "Aasma Bano", "m": "6263428749"}, {"d": "JABALPUR", "n": "Pooja Banshkar", "m": "6263433297"}, {"d": "JABALPUR", "n": "Aniket Patel", "m": "6263435109"}, {"d": "JABALPUR", "n": "Monu", "m": "6263443771"}, {"d": "JABALPUR", "n": "Dhannu Lal", "m": "6263445204"}, {"d": "JABALPUR", "n": "Pirece Chakrawarti", "m": "6263445266"}, {"d": "JABALPUR", "n": "Phaggan Singh", "m": "6263452525"}, {"d": "JABALPUR", "n": "Gulab Bai", "m": "6263452901"}, {"d": "JABALPUR", "n": "Sandeep Rajbhar", "m": "6263455555"}, {"d": "JABALPUR", "n": "Ankit Kumar Mehra", "m": "6263459353"}, {"d": "JABALPUR", "n": "Nirmala Kachhi", "m": "6263459856"}, {"d": "JABALPUR", "n": "Pinki Jhariya", "m": "6263463492"}, {"d": "JABALPUR", "n": "Sonulal Mehra", "m": "6263480756"}, {"d": "JABALPUR", "n": "Madhuri Namdeo", "m": "6263482623"}, {"d": "JABALPUR", "n": "Shruti Kori", "m": "6263486094"}, {"d": "JABALPUR", "n": "Sharda Prasad", "m": "6263499870"}, {"d": "JABALPUR", "n": "Nakul Prasad Kachhi", "m": "6263500152"}, {"d": "JABALPUR", "n": "Rahul Barman", "m": "6263510830"}, {"d": "JABALPUR", "n": "Bhagchand", "m": "6263517820"}, {"d": "JABALPUR", "n": "Om Prakash Patkar", "m": "6263518101"}, {"d": "JABALPUR", "n": "Vivek", "m": "6263518972"}, {"d": "JABALPUR", "n": "Pyari Bai", "m": "6263520756"}, {"d": "JABALPUR", "n": "Sindhu Patel", "m": "6263524050"}, {"d": "JABALPUR", "n": "Sarita", "m": "6263537544"}, {"d": "JABALPUR", "n": "Pallvi Yadav", "m": "6263543307"}, {"d": "JABALPUR", "n": "Piyush Yadav", "m": "6263545848"}, {"d": "JABALPUR", "n": "Jalebi", "m": "6263558565"}, {"d": "JABALPUR", "n": "Ahilya Bai", "m": "6263559800"}, {"d": "JABALPUR", "n": "Ful Bai Lodhi", "m": "6263560797"}, {"d": "JABALPUR", "n": "Meena Bai", "m": "6263561541"}, {"d": "JABALPUR", "n": "Amit Singh Gound", "m": "6263565943"}, {"d": "JABALPUR", "n": "Tulsa Bai", "m": "6263567621"}, {"d": "JABALPUR", "n": "Ramesh", "m": "6263567899"}, {"d": "JABALPUR", "n": "Sukhchen", "m": "6263571615"}, {"d": "JABALPUR", "n": "Niraj Lodhi", "m": "6263571720"}, {"d": "JABALPUR", "n": "Vidhya Gound", "m": "6263601541"}, {"d": "JABALPUR", "n": "Halki Bai Kori", "m": "6263622267"}, {"d": "JABALPUR", "n": "Rahul Kumar Ghashiya", "m": "6263625606"}, {"d": "JABALPUR", "n": "Ramu Kol", "m": "6263628511"}, {"d": "JABALPUR", "n": "Gaurav Kumar Gidroniya", "m": "6263634056"}, {"d": "JABALPUR", "n": "Shyam Lal", "m": "6263652067"}, {"d": "JABALPUR", "n": "Halku Ram", "m": "6263654758"}, {"d": "JABALPUR", "n": "Deepak", "m": "6263660055"}, {"d": "JABALPUR", "n": "Ramdyal", "m": "6263665023"}, {"d": "JABALPUR", "n": "Dropti", "m": "6263667377"}, {"d": "JABALPUR", "n": "Rohit Kumar Gajbhiye", "m": "6263668486"}, {"d": "JABALPUR", "n": "Raja Chamar", "m": "6263672055"}, {"d": "JABALPUR", "n": "Rashmi", "m": "6263672531"}, {"d": "JABALPUR", "n": "Jaid Babu", "m": "6263672761"}, {"d": "JABALPUR", "n": "Jagat Singh Uikey", "m": "6263685635"}, {"d": "JABALPUR", "n": "Rajesh Mallah", "m": "6263689913"}, {"d": "JABALPUR", "n": "Manisha Kol", "m": "6263692803"}, {"d": "JABALPUR", "n": "Sayna Bano", "m": "6263694520"}, {"d": "JABALPUR", "n": "Vandna Bai", "m": "6263709052"}, {"d": "JABALPUR", "n": "Pappu", "m": "6263718660"}, {"d": "JABALPUR", "n": "Mahesh Prasad Dubey", "m": "6263726092"}, {"d": "JABALPUR", "n": "Arun Kumar", "m": "6263732658"}, {"d": "JABALPUR", "n": "Umashankar Patel", "m": "6263734890"}, {"d": "JABALPUR", "n": "Shekh Rahaman", "m": "6263737891"}, {"d": "JABALPUR", "n": "Laxmi Rajpoot", "m": "6263743562"}, {"d": "JABALPUR", "n": "Bhagwan Singh", "m": "6263749401"}, {"d": "JABALPUR", "n": "Prahlad Kumre", "m": "6263758123"}, {"d": "JABALPUR", "n": "Bhavna", "m": "6263764497"}, {"d": "JABALPUR", "n": "Muskan Gotiya", "m": "6263777703"}, {"d": "JABALPUR", "n": "Rajesh", "m": "6263788678"}, {"d": "JABALPUR", "n": "Babban", "m": "6263789234"}, {"d": "JABALPUR", "n": "Kamlesh Kumar", "m": "6263789546"}, {"d": "JABALPUR", "n": "Bholi Bai", "m": "6263790242"}, {"d": "JABALPUR", "n": "Ajay", "m": "6263798987"}, {"d": "JABALPUR", "n": "Mo. Faijan", "m": "6263802293"}, {"d": "JABALPUR", "n": "Sanjay Yadav", "m": "6263810603"}, {"d": "JABALPUR", "n": "Narayan Singh Maravi", "m": "6263812961"}, {"d": "JABALPUR", "n": "Hemant Singh", "m": "6263813775"}, {"d": "JABALPUR", "n": "Krishna Bai", "m": "6263828107"}, {"d": "JABALPUR", "n": "Sunil", "m": "6263834031"}, {"d": "JABALPUR", "n": "Rajni Bai Sahu", "m": "6263846250"}, {"d": "JABALPUR", "n": "Maya", "m": "6263851809"}, {"d": "JABALPUR", "n": "Priyanshu Rajpoot", "m": "6263852058"}, {"d": "JABALPUR", "n": "Vaijanti", "m": "6263854378"}, {"d": "JABALPUR", "n": "Diksha", "m": "6263866558"}, {"d": "JABALPUR", "n": "Varsha Barman", "m": "6263868723"}, {"d": "JABALPUR", "n": "Usha Bai", "m": "6263877269"}, {"d": "JABALPUR", "n": "Dipak Singh", "m": "6263881887"}, {"d": "JABALPUR", "n": "Sonu Patel", "m": "6263885359"}, {"d": "JABALPUR", "n": "Manoj Kumar Gound", "m": "6263908767"}, {"d": "JABALPUR", "n": "Chandan Maravi", "m": "6263918704"}, {"d": "JABALPUR", "n": "Sushma", "m": "6263923955"}, {"d": "JABALPUR", "n": "Govind Prasad Sen", "m": "6263929279"}, {"d": "JABALPUR", "n": "Uma Bai Chakrawarti", "m": "6263932101"}, {"d": "JABALPUR", "n": "Pooja Bhumiya", "m": "6263941590"}, {"d": "JABALPUR", "n": "Chanda Bai", "m": "6263953212"}, {"d": "JABALPUR", "n": "Shivkumar", "m": "6263961745"}, {"d": "JABALPUR", "n": "Shakun Bairagi", "m": "6263965392"}, {"d": "JABALPUR", "n": "Puran Singh", "m": "6263966903"}, {"d": "JABALPUR", "n": "Prashant Dhurve", "m": "6263987570"}, {"d": "JABALPUR", "n": "Vijay Bhumiya", "m": "6263990638"}, {"d": "JABALPUR", "n": "Devchand", "m": "6263994931"}, {"d": "JABALPUR", "n": "Vinod Kumar Rajak", "m": "6263995207"}, {"d": "JABALPUR", "n": "Nirmala", "m": "6264000734"}, {"d": "JABALPUR", "n": "Anjana", "m": "6264005317"}, {"d": "JABALPUR", "n": "Poona Bai Kol", "m": "6264015072"}, {"d": "JABALPUR", "n": "Amandeep Kaur", "m": "6264018376"}, {"d": "JABALPUR", "n": "Manoj Sahu", "m": "6264030073"}, {"d": "JABALPUR", "n": "Dashrath Lal Kesharwani", "m": "6264032942"}, {"d": "JABALPUR", "n": "Nainshi", "m": "6264043952"}, {"d": "JABALPUR", "n": "Roobi", "m": "6264046991"}, {"d": "JABALPUR", "n": "Roop Lal", "m": "6264049358"}, {"d": "JABALPUR", "n": "Narendra Barman", "m": "6264056408"}, {"d": "JABALPUR", "n": "Nisha Bai", "m": "6264059959"}, {"d": "JABALPUR", "n": "Mangal", "m": "6264063662"}, {"d": "JABALPUR", "n": "Kusum", "m": "6264066782"}, {"d": "JABALPUR", "n": "Tejeshwar Paraste", "m": "6264066959"}, {"d": "JABALPUR", "n": "Sudeep Kumar Jain", "m": "6264079435"}, {"d": "JABALPUR", "n": "Arun", "m": "6264084986"}, {"d": "JABALPUR", "n": "Vikas Kumar Dhurve", "m": "6264091022"}, {"d": "JABALPUR", "n": "Bati Bai", "m": "6264103338"}, {"d": "JABALPUR", "n": "LAXMI ", "m": "6264112718"}, {"d": "JABALPUR", "n": "Noni Bai", "m": "6264115379"}, {"d": "JABALPUR", "n": "Chhoti Bai", "m": "6264116586"}, {"d": "JABALPUR", "n": "Amar Singh", "m": "6264121170"}, {"d": "JABALPUR", "n": "Aniket Bhumiya", "m": "6264137711"}, {"d": "JABALPUR", "n": "Aditya Kewat", "m": "6264139479"}, {"d": "JABALPUR", "n": "Nihit Kumar Khare", "m": "6264145256"}, {"d": "JABALPUR", "n": "Rajesh", "m": "6264159034"}, {"d": "JABALPUR", "n": "Chandan Patel", "m": "6264159364"}, {"d": "JABALPUR", "n": "Ibalasha Bai", "m": "6264162003"}, {"d": "JABALPUR", "n": "Mahesh", "m": "6264163313"}, {"d": "JABALPUR", "n": "Sateesh Kewat", "m": "6264163968"}, {"d": "JABALPUR", "n": "Somesh Singh", "m": "6264169666"}, {"d": "JABALPUR", "n": "Saraswati Jhariya", "m": "6264174532"}, {"d": "JABALPUR", "n": "Rahul", "m": "6264175764"}, {"d": "JABALPUR", "n": "Tophan Singh", "m": "6264184308"}, {"d": "JABALPUR", "n": "Seetaram Sahu", "m": "6264199203"}, {"d": "JABALPUR", "n": "Dharmend", "m": "6264203266"}, {"d": "JABALPUR", "n": "Pratibha", "m": "6264205934"}, {"d": "JABALPUR", "n": "Ram Narayan", "m": "6264222021"}, {"d": "JABALPUR", "n": "Rishi Maravi", "m": "6264229362"}, {"d": "JABALPUR", "n": "Munni Prajapati", "m": "6264233005"}, {"d": "JABALPUR", "n": "Sunil Kumar Parste", "m": "6264246134"}, {"d": "JABALPUR", "n": "Bhola", "m": "6264246155"}, {"d": "JABALPUR", "n": "Rukmani Bai Gond", "m": "6264246193"}, {"d": "JABALPUR", "n": "Lalit Kumar", "m": "6264256665"}, {"d": "JABALPUR", "n": "Abhishekh Jhariya", "m": "6264261306"}, {"d": "JABALPUR", "n": "Chandabai", "m": "6264266608"}, {"d": "JABALPUR", "n": "Dasru Lal", "m": "6264271246"}, {"d": "JABALPUR", "n": "Kamal Singh", "m": "6264271587"}, {"d": "JABALPUR", "n": "Mohan Lal", "m": "6264277966"}, {"d": "JABALPUR", "n": "Parvati Bai", "m": "6264278491"}, {"d": "JABALPUR", "n": "Rishika Sen", "m": "6264286834"}, {"d": "JABALPUR", "n": "Diksha", "m": "6264296830"}, {"d": "JABALPUR", "n": "Sachin Yadav", "m": "6264297231"}, {"d": "JABALPUR", "n": "mahaish mehra", "m": "6264308792"}, {"d": "JABALPUR", "n": "Sukhbati Gound", "m": "6264312021"}, {"d": "JABALPUR", "n": "Uma Bai Patel", "m": "6264317949"}, {"d": "JABALPUR", "n": "Mamta Bain", "m": "6264324727"}, {"d": "JABALPUR", "n": "Sarsvati", "m": "6264336865"}, {"d": "JABALPUR", "n": "Vidha Vati Rai", "m": "6264348510"}, {"d": "JABALPUR", "n": "Sandeep Barman", "m": "6264354072"}, {"d": "JABALPUR", "n": "Seema", "m": "6264354523"}, {"d": "JABALPUR", "n": "Bandna Yadav", "m": "6264355257"}, {"d": "JABALPUR", "n": "Radha Sendram", "m": "6264355437"}, {"d": "JABALPUR", "n": "Manibai", "m": "6264357663"}, {"d": "JABALPUR", "n": "Satish Sahu", "m": "6264363667"}, {"d": "JABALPUR", "n": "Khushboo", "m": "6264365263"}, {"d": "JABALPUR", "n": "Mamta Vishwakarma", "m": "6264372411"}, {"d": "JABALPUR", "n": "Laxmi", "m": "6264374487"}, {"d": "JABALPUR", "n": "Rajesh Soni", "m": "6264381356"}, {"d": "JABALPUR", "n": "Riya Thakur", "m": "6264381660"}, {"d": "JABALPUR", "n": "Ram Sevak", "m": "6264385956"}, {"d": "JABALPUR", "n": "Shiv Prasad", "m": "6264399495"}, {"d": "JABALPUR", "n": "Eedal Mallah", "m": "6264407382"}, {"d": "JABALPUR", "n": "Priyanka Ahirwar", "m": "6264408879"}, {"d": "JABALPUR", "n": "Sarita", "m": "6264419403"}, {"d": "JABALPUR", "n": "Hubbi Ahirwar", "m": "6264427004"}, {"d": "JABALPUR", "n": "Sushila Bai Marko", "m": "6264427217"}, {"d": "JABALPUR", "n": "Surendra Kumar Nai", "m": "6264428169"}, {"d": "JABALPUR", "n": "Rohit Kumar", "m": "6264434775"}, {"d": "JABALPUR", "n": "Jitthu Lal Rai", "m": "6264435889"}, {"d": "JABALPUR", "n": "Indo", "m": "6264438988"}, {"d": "JABALPUR", "n": "Khushboo Jhariya", "m": "6264444748"}, {"d": "JABALPUR", "n": "Sukhdev", "m": "6264445478"}, {"d": "JABALPUR", "n": "Shanti Bai", "m": "6264464314"}, {"d": "JABALPUR", "n": "Rameshwar Rajak", "m": "6264470396"}, {"d": "JABALPUR", "n": "Rinku", "m": "6264476593"}, {"d": "JABALPUR", "n": "Usha Choudhary", "m": "6264478244"}, {"d": "JABALPUR", "n": "Rahul Kol", "m": "6264483055"}, {"d": "JABALPUR", "n": "Amar Singh", "m": "6264483936"}, {"d": "JABALPUR", "n": "Jyoti Barman", "m": "6264498798"}, {"d": "JABALPUR", "n": "Arti", "m": "6264509136"}, {"d": "JABALPUR", "n": "Rashmi Kori", "m": "6264511163"}, {"d": "JABALPUR", "n": "Mangal", "m": "6264512122"}, {"d": "JABALPUR", "n": "BARATI LAL", "m": "6264513525"}, {"d": "JABALPUR", "n": "Mohit Patel", "m": "6264522287"}, {"d": "JABALPUR", "n": "Dharam Singh", "m": "6264526435"}, {"d": "JABALPUR", "n": "Sukc Raam", "m": "6264532211"}, {"d": "JABALPUR", "n": "Pancham Lal Kumhar", "m": "6264534465"}, {"d": "JABALPUR", "n": "Ved Prakash", "m": "6264534680"}, {"d": "JABALPUR", "n": "Swati", "m": "6264535322"}, {"d": "JABALPUR", "n": "Sudeepa Singh Khangar", "m": "6264538898"}, {"d": "JABALPUR", "n": "Jyoti", "m": "6264541261"}, {"d": "JABALPUR", "n": "Lalita Dahiya", "m": "6264544619"}, {"d": "JABALPUR", "n": "Vishnu Prasad", "m": "6264549335"}, {"d": "JABALPUR", "n": "Premvati Thakur", "m": "6264551861"}, {"d": "JABALPUR", "n": "Rakesh Kumar", "m": "6264552532"}, {"d": "JABALPUR", "n": "Subhash", "m": "6264553683"}, {"d": "JABALPUR", "n": "Dumari", "m": "6264554063"}, {"d": "JABALPUR", "n": "Kapildev", "m": "6264560850"}, {"d": "JABALPUR", "n": "Darshan", "m": "6264562483"}, {"d": "JABALPUR", "n": "Kallu Bai", "m": "6264563744"}, {"d": "JABALPUR", "n": "Sharmila Choudhary", "m": "6264564354"}, {"d": "JABALPUR", "n": "Raja Sonkar", "m": "6264573058"}, {"d": "JABALPUR", "n": "Sundar Bai", "m": "6264576558"}, {"d": "JABALPUR", "n": "Laxmi", "m": "6264582691"}, {"d": "JABALPUR", "n": "Vimala", "m": "6264590055"}, {"d": "JABALPUR", "n": "Muskan", "m": "6264613230"}, {"d": "JABALPUR", "n": "Shabana Bano", "m": "6264618956"}, {"d": "JABALPUR", "n": "Chanda Bai", "m": "6264622070"}, {"d": "JABALPUR", "n": "Lal Singh Lodhi", "m": "6264629049"}, {"d": "JABALPUR", "n": "Sourabh Kachhi", "m": "6264632350"}, {"d": "JABALPUR", "n": "Vinay Vishwakarma", "m": "6264639291"}, {"d": "JABALPUR", "n": "Arjun", "m": "6264654135"}, {"d": "JABALPUR", "n": "Ghanshyam Gound", "m": "6264656321"}, {"d": "JABALPUR", "n": "Soraj Markam", "m": "6264659195"}, {"d": "JABALPUR", "n": "Mohini Choudhary", "m": "6264661674"}, {"d": "JABALPUR", "n": "Amit Kumar Lodhi", "m": "6264669030"}, {"d": "JABALPUR", "n": "Aneeta Sahu", "m": "6264673047"}, {"d": "JABALPUR", "n": "Soniya Kshtri", "m": "6264683455"}, {"d": "JABALPUR", "n": "Suresh", "m": "6264684853"}, {"d": "JABALPUR", "n": "Sapna", "m": "6264686025"}, {"d": "JABALPUR", "n": "Kapil Chamar", "m": "6264686766"}, {"d": "JABALPUR", "n": "Maya Bai", "m": "6264688633"}, {"d": "JABALPUR", "n": "Prakash Yadav", "m": "6264705089"}, {"d": "JABALPUR", "n": "Shekh Jahid", "m": "6264709345"}, {"d": "JABALPUR", "n": "Sarswati", "m": "6264712027"}, {"d": "JABALPUR", "n": "Manish", "m": "6264714837"}, {"d": "JABALPUR", "n": "Neetesh", "m": "6264728729"}, {"d": "JABALPUR", "n": "Ajay", "m": "6264729839"}, {"d": "JABALPUR", "n": "Simmu", "m": "6264734524"}, {"d": "JABALPUR", "n": "Shikha", "m": "6264739269"}, {"d": "JABALPUR", "n": "Archna Mallah", "m": "6264740589"}, {"d": "JABALPUR", "n": "Kaliya Bai", "m": "6264742404"}, {"d": "JABALPUR", "n": "Janavi Barman", "m": "6264749501"}, {"d": "JABALPUR", "n": "Karishma Khangar", "m": "6264751164"}, {"d": "JABALPUR", "n": "Reva Ram", "m": "6264752205"}, {"d": "JABALPUR", "n": "Seema Kol", "m": "6264754808"}, {"d": "JABALPUR", "n": "Rakesh Kewat", "m": "6264765490"}, {"d": "JABALPUR", "n": "Ajad Rajak", "m": "6264766154"}, {"d": "JABALPUR", "n": "Dasoda Thakur", "m": "6264778311"}, {"d": "JABALPUR", "n": "Vimala Bai", "m": "6264785260"}, {"d": "JABALPUR", "n": "Geeta", "m": "6264798900"}, {"d": "JABALPUR", "n": "Aditya Shrivastav", "m": "6264803335"}, {"d": "JABALPUR", "n": "Janki Bai", "m": "6264806525"}, {"d": "JABALPUR", "n": "Sameer Dahiya", "m": "6264807486"}, {"d": "JABALPUR", "n": "Satish Kumar Prajapati", "m": "6264812161"}, {"d": "JABALPUR", "n": "Ajju Verman", "m": "6264814750"}, {"d": "JABALPUR", "n": "Arjun Prasad", "m": "6264819154"}, {"d": "JABALPUR", "n": "Kusum Lodhi", "m": "6264819794"}, {"d": "JABALPUR", "n": "Sanjida Begum", "m": "6264825929"}, {"d": "JABALPUR", "n": "Sakshi Kol", "m": "6264830660"}, {"d": "JABALPUR", "n": "Pavan", "m": "6264838272"}, {"d": "JABALPUR", "n": "Beti Bai", "m": "6264840601"}, {"d": "JABALPUR", "n": "Shivani", "m": "6264842076"}, {"d": "JABALPUR", "n": "Shyamsundar Praste", "m": "6264851144"}, {"d": "JABALPUR", "n": "Sona Bai", "m": "6264851563"}, {"d": "JABALPUR", "n": "Mamta", "m": "6264858307"}, {"d": "JABALPUR", "n": "Samar Dahiya", "m": "6264863136"}, {"d": "JABALPUR", "n": "Girish Kori", "m": "6264871451"}, {"d": "JABALPUR", "n": "Dheerendra", "m": "6264888744"}, {"d": "JABALPUR", "n": "Kosa Bai", "m": "6264905167"}, {"d": "JABALPUR", "n": "Satyam Kumhar", "m": "6264907701"}, {"d": "JABALPUR", "n": "Ravishankar", "m": "6264908893"}, {"d": "JABALPUR", "n": "Vinod Kumar", "m": "6264909762"}, {"d": "JABALPUR", "n": "Chamma", "m": "6264917356"}, {"d": "JABALPUR", "n": "Geeta Paraste", "m": "6264926590"}, {"d": "JABALPUR", "n": "Khushi Kushwaha", "m": "6264945115"}, {"d": "JABALPUR", "n": "Vinod Kumar Kurmi Patel", "m": "6264947477"}, {"d": "JABALPUR", "n": "Rahul Singh", "m": "6264958393"}, {"d": "JABALPUR", "n": "Richa Dubey", "m": "6264969078"}, {"d": "JABALPUR", "n": "Shila Bai", "m": "6264971451"}, {"d": "JABALPUR", "n": "Ram Lal Gond", "m": "6264975588"}, {"d": "JABALPUR", "n": "Nisha Kewat", "m": "6264979541"}, {"d": "JABALPUR", "n": "Prakash Ray", "m": "6264981414"}, {"d": "JABALPUR", "n": "Vijay Bai", "m": "6264998753"}, {"d": "JABALPUR", "n": "Santu", "m": "6265010264"}, {"d": "JABALPUR", "n": "Halki Bai Chadar", "m": "6265032834"}, {"d": "JABALPUR", "n": "Balkishan Chourasiya", "m": "6265042434"}, {"d": "JABALPUR", "n": "Mohan Singh", "m": "6265043124"}, {"d": "JABALPUR", "n": "Ramnath Ben", "m": "6265054863"}, {"d": "JABALPUR", "n": "Vivek Kushwaha", "m": "6265056799"}, {"d": "JABALPUR", "n": "Aashika Soni", "m": "6265058691"}, {"d": "JABALPUR", "n": "Ram Patel", "m": "6265059700"}, {"d": "JABALPUR", "n": "Sahil Patel", "m": "6265065666"}, {"d": "JABALPUR", "n": "Devlal", "m": "6265066251"}, {"d": "JABALPUR", "n": "Satish Kumar", "m": "6265067147"}, {"d": "JABALPUR", "n": "Pinky Vishwakarma", "m": "6265070189"}, {"d": "JABALPUR", "n": "Devavati", "m": "6265078030"}, {"d": "JABALPUR", "n": "Radha Bai", "m": "6265079072"}, {"d": "JABALPUR", "n": "Indrsingh", "m": "6265083960"}, {"d": "JABALPUR", "n": "Reena Koshta", "m": "6265087659"}, {"d": "JABALPUR", "n": "Sandhya Chakrvarti", "m": "6265101274"}, {"d": "JABALPUR", "n": "Vishwnath", "m": "6265102178"}, {"d": "JABALPUR", "n": "Vindresh", "m": "6265103641"}, {"d": "JABALPUR", "n": "Pooran Lal Pardhan", "m": "6265114466"}, {"d": "JABALPUR", "n": "Ravi Prasad Sahu", "m": "6265116702"}, {"d": "JABALPUR", "n": "Raja Gond", "m": "6265116809"}, {"d": "JABALPUR", "n": "Babita Bai", "m": "6265117332"}, {"d": "JABALPUR", "n": "PRAKASHVATI JAIN", "m": "6265120826"}, {"d": "JABALPUR", "n": "Kandhi Lal", "m": "6265131340"}, {"d": "JABALPUR", "n": "Rupesh", "m": "6265131992"}, {"d": "JABALPUR", "n": "Arvind", "m": "6265141521"}, {"d": "JABALPUR", "n": "Deepak", "m": "6265144605"}, {"d": "JABALPUR", "n": "Devki", "m": "6265145415"}, {"d": "JABALPUR", "n": "Dhansingh Nuniya", "m": "6265146587"}, {"d": "JABALPUR", "n": "Anshul Kol", "m": "6265157988"}, {"d": "JABALPUR", "n": "Roshni Sahu", "m": "6265158515"}, {"d": "JABALPUR", "n": "Komal Prasad Yadav", "m": "6265165479"}, {"d": "JABALPUR", "n": "Nisha", "m": "6265182377"}, {"d": "JABALPUR", "n": "Narayan Singh", "m": "6265192573"}, {"d": "JABALPUR", "n": "Sapna", "m": "6265201222"}, {"d": "JABALPUR", "n": "Shilpa Bai", "m": "6265201392"}, {"d": "JABALPUR", "n": "Naresh", "m": "6265203006"}, {"d": "JABALPUR", "n": "Gansa Bai", "m": "6265215212"}, {"d": "JABALPUR", "n": "Jira Bai", "m": "6265215463"}, {"d": "JABALPUR", "n": "Ranjita Bai", "m": "6265218311"}, {"d": "JABALPUR", "n": "Parvati", "m": "6265221457"}, {"d": "JABALPUR", "n": "Sonu Rajak", "m": "6265228817"}, {"d": "JABALPUR", "n": "Reshma", "m": "6265229594"}, {"d": "JABALPUR", "n": "Chandrawati", "m": "6265231951"}, {"d": "JABALPUR", "n": "Sushama", "m": "6265232851"}, {"d": "JABALPUR", "n": "Laxmi Bai", "m": "6265251915"}, {"d": "JABALPUR", "n": "Laxmi Soni", "m": "6265255284"}, {"d": "JABALPUR", "n": "Ranu Barman", "m": "6265262486"}, {"d": "JABALPUR", "n": "Abhishek", "m": "6265266433"}, {"d": "JABALPUR", "n": "Sushma Choudhary", "m": "6265279118"}, {"d": "JABALPUR", "n": "KHUSHBU BHUNMIYA", "m": "6265285394"}, {"d": "JABALPUR", "n": "Shiv Charan", "m": "6265285788"}, {"d": "JABALPUR", "n": "Manisha Sen", "m": "6265291360"}, {"d": "JABALPUR", "n": "Supriya Vishwakarma", "m": "6265291783"}, {"d": "JABALPUR", "n": "Prakash Bai", "m": "6265296220"}, {"d": "JABALPUR", "n": "Surendra Kumar", "m": "6265299035"}, {"d": "JABALPUR", "n": "Raju Kol", "m": "6265304578"}, {"d": "JABALPUR", "n": "Ramkumar", "m": "6265310330"}, {"d": "JABALPUR", "n": "Ram Charan", "m": "6265312131"}, {"d": "JABALPUR", "n": "Ajay Kumar", "m": "6265314194"}, {"d": "JABALPUR", "n": "Asha Bai", "m": "6265321789"}, {"d": "JABALPUR", "n": "Bhagvati Patel", "m": "6265322100"}, {"d": "JABALPUR", "n": "Kajal Thakur", "m": "6265329668"}, {"d": "JABALPUR", "n": "Salik Ram", "m": "6265330847"}, {"d": "JABALPUR", "n": "Roshni Bai", "m": "6265330978"}, {"d": "JABALPUR", "n": "Manju Choudhary", "m": "6265336452"}, {"d": "JABALPUR", "n": "Sajni Bai", "m": "6265343836"}, {"d": "JABALPUR", "n": "Bhuri Bai", "m": "6265350769"}, {"d": "JABALPUR", "n": "Durgesh", "m": "6265352796"}, {"d": "JABALPUR", "n": "Rohani Mallah", "m": "6265353527"}, {"d": "JABALPUR", "n": "Siya Bai", "m": "6265359446"}, {"d": "JABALPUR", "n": "Kailash", "m": "6265368011"}, {"d": "JABALPUR", "n": "Umesh Mallah", "m": "6265369663"}, {"d": "JABALPUR", "n": "Durga Bai Kachhi", "m": "6265380296"}, {"d": "JABALPUR", "n": "Latorilal", "m": "6265381981"}, {"d": "JABALPUR", "n": "Namrata Patel", "m": "6265385404"}, {"d": "JABALPUR", "n": "Nikesh Prajapati", "m": "6265397454"}, {"d": "JABALPUR", "n": "Phuliya Bai", "m": "6265399525"}, {"d": "JABALPUR", "n": "Pappu", "m": "6265403809"}, {"d": "JABALPUR", "n": "Munna Yadav", "m": "6265406538"}, {"d": "JABALPUR", "n": "Rekha Bai", "m": "6265410391"}, {"d": "JABALPUR", "n": "Pradeep Barman", "m": "6265413110"}, {"d": "JABALPUR", "n": "Laxmi Gotiya", "m": "6265426685"}, {"d": "JABALPUR", "n": "Mithlesh Singh Maravi", "m": "6265431954"}, {"d": "JABALPUR", "n": "Yogesh Bairagi", "m": "6265435197"}, {"d": "JABALPUR", "n": "Devendra Singh", "m": "6265437399"}, {"d": "JABALPUR", "n": "Ranu", "m": "6265438339"}, {"d": "JABALPUR", "n": "Rinki Ahirwar", "m": "6265439496"}, {"d": "JABALPUR", "n": "Jhallu", "m": "6265441765"}, {"d": "JABALPUR", "n": "Soniya", "m": "6265442512"}, {"d": "JABALPUR", "n": "Anuradha", "m": "6265444618"}, {"d": "JABALPUR", "n": "Dharam Das", "m": "6265451212"}, {"d": "JABALPUR", "n": "Anil Gound", "m": "6265454165"}, {"d": "JABALPUR", "n": "Bhaganti", "m": "6265454612"}, {"d": "JABALPUR", "n": "Viran", "m": "6265455214"}, {"d": "JABALPUR", "n": "Rajesh Kumar Pathak", "m": "6265455455"}, {"d": "JABALPUR", "n": "Braj Lal Urf Birju Patel", "m": "6265461849"}, {"d": "JABALPUR", "n": "Summa Bai", "m": "6265462505"}, {"d": "JABALPUR", "n": "Mamta Bai", "m": "6265464632"}, {"d": "JABALPUR", "n": "Ram Singh", "m": "6265465321"}, {"d": "JABALPUR", "n": "Aniket Thakur", "m": "6265469300"}, {"d": "JABALPUR", "n": "Parvati", "m": "6265470437"}, {"d": "JABALPUR", "n": "Rajendra", "m": "6265475428"}, {"d": "JABALPUR", "n": "Vishal Singh", "m": "6265475452"}, {"d": "JABALPUR", "n": "Tulsiram", "m": "6265475475"}, {"d": "JABALPUR", "n": "Shashi", "m": "6265476663"}, {"d": "JABALPUR", "n": "Shyam Bai Thakur", "m": "6265478399"}, {"d": "JABALPUR", "n": "Sunil", "m": "6265484698"}, {"d": "JABALPUR", "n": "Deepak Rai", "m": "6265490469"}, {"d": "JABALPUR", "n": "Drup Singh", "m": "6265492813"}, {"d": "JABALPUR", "n": "Subhaga Singh", "m": "6265496936"}, {"d": "JABALPUR", "n": "Huma Koushar", "m": "6265522698"}, {"d": "JABALPUR", "n": "Pushpa Bai", "m": "6265523111"}, {"d": "JABALPUR", "n": "Saurabh", "m": "6265530963"}, {"d": "JABALPUR", "n": "Deelip Singh", "m": "6265534180"}, {"d": "JABALPUR", "n": "Nilam", "m": "6265534561"}, {"d": "JABALPUR", "n": "Tularam", "m": "6265542201"}, {"d": "JABALPUR", "n": "Krashna Bai", "m": "6265543215"}, {"d": "JABALPUR", "n": "Manju Bai Rajak", "m": "6265558081"}, {"d": "JABALPUR", "n": "Priya Barman", "m": "6265567186"}, {"d": "JABALPUR", "n": "Vinod", "m": "6265569822"}, {"d": "JABALPUR", "n": "Rohit Chamar", "m": "6265570469"}, {"d": "JABALPUR", "n": "Ritu Chakrawarti", "m": "6265599098"}, {"d": "JABALPUR", "n": "Rajkumari", "m": "6265603653"}, {"d": "JABALPUR", "n": "Sachin Verma", "m": "6265607898"}, {"d": "JABALPUR", "n": "Shama Afreen Raien", "m": "6265611521"}, {"d": "JABALPUR", "n": "Veerendra Choukse", "m": "6265615572"}, {"d": "JABALPUR", "n": "Dharmendra", "m": "6265621230"}, {"d": "JABALPUR", "n": "Shubham Choudhary", "m": "6265630565"}, {"d": "JABALPUR", "n": "Brjesh Kumar", "m": "6265631120"}, {"d": "JABALPUR", "n": "Poona Bai", "m": "6265637264"}, {"d": "JABALPUR", "n": "Ramdin", "m": "6265641112"}, {"d": "JABALPUR", "n": "Lucky Barman", "m": "6265648856"}, {"d": "JABALPUR", "n": "Bhupendra Singh", "m": "6265653387"}, {"d": "JABALPUR", "n": "Kamla Bai", "m": "6265654132"}, {"d": "JABALPUR", "n": "Rajesh", "m": "6265656411"}, {"d": "JABALPUR", "n": "Ramsakhi Barman", "m": "6265656588"}, {"d": "JABALPUR", "n": "Anil Kumar", "m": "6265662121"}, {"d": "JABALPUR", "n": "Narayan", "m": "6265662612"}, {"d": "JABALPUR", "n": "Sourabh Brhamman", "m": "6265663807"}, {"d": "JABALPUR", "n": "Shalini Mehra", "m": "6265668546"}, {"d": "JABALPUR", "n": "Bablu Kol", "m": "6265670965"}, {"d": "JABALPUR", "n": "Shubham Raikwar", "m": "6265671131"}, {"d": "JABALPUR", "n": "Rachana", "m": "6265673489"}, {"d": "JABALPUR", "n": "Parsottam", "m": "6265675408"}, {"d": "JABALPUR", "n": "Satyaveer", "m": "6265683437"}, {"d": "JABALPUR", "n": "Mahendra Kumar", "m": "6265690344"}, {"d": "JABALPUR", "n": "Devendra Kumar Bagri", "m": "6265694410"}, {"d": "JABALPUR", "n": "Dhanraj Gound", "m": "6265698765"}, {"d": "JABALPUR", "n": "Ramkesh", "m": "6265700350"}, {"d": "JABALPUR", "n": "rajkumar", "m": "6265700768"}, {"d": "JABALPUR", "n": "Summat Singh", "m": "6265704915"}, {"d": "JABALPUR", "n": "Sanjay Singh Gound", "m": "6265706018"}, {"d": "JABALPUR", "n": "Goda Bai", "m": "6265707054"}, {"d": "JABALPUR", "n": "Mahima", "m": "6265714705"}, {"d": "JABALPUR", "n": "Rooksar", "m": "6265722718"}, {"d": "JABALPUR", "n": "Mulchand Lodhi", "m": "6265723173"}, {"d": "JABALPUR", "n": "Ajay", "m": "6265728288"}, {"d": "JABALPUR", "n": "SHANTI MEHRA ", "m": "6265729077"}, {"d": "JABALPUR", "n": "Anjana Koshta", "m": "6265742682"}, {"d": "JABALPUR", "n": "Khusbu", "m": "6265743404"}, {"d": "JABALPUR", "n": "Bramha Kumar Patel", "m": "6265748359"}, {"d": "JABALPUR", "n": "Shivani Ben", "m": "6265750992"}, {"d": "JABALPUR", "n": "Mariya Naz", "m": "6265754572"}, {"d": "JABALPUR", "n": "Ameeta", "m": "6265762141"}, {"d": "JABALPUR", "n": "Nandini", "m": "6265765454"}, {"d": "JABALPUR", "n": "Artee", "m": "6265772053"}, {"d": "JABALPUR", "n": "Rinki", "m": "6265773717"}, {"d": "JABALPUR", "n": "Jeevan Lal Gupta", "m": "6265774436"}, {"d": "JABALPUR", "n": "Lalshah", "m": "6265777592"}, {"d": "JABALPUR", "n": "Amit Kol", "m": "6265783206"}, {"d": "JABALPUR", "n": "Raju", "m": "6265793539"}, {"d": "JABALPUR", "n": "Ram Rati Yadav", "m": "6265799358"}, {"d": "JABALPUR", "n": "Kandhi Lal", "m": "6265802520"}, {"d": "JABALPUR", "n": "Sweta Singh", "m": "6265811215"}, {"d": "JABALPUR", "n": "Babita Bai Kurmi", "m": "6265825385"}, {"d": "JABALPUR", "n": "Gourishankar", "m": "6265833828"}, {"d": "JABALPUR", "n": "Durga Patel", "m": "6265842070"}, {"d": "JABALPUR", "n": "Durga Prasad", "m": "6265843623"}, {"d": "JABALPUR", "n": "Vinod Kumar Kol", "m": "6265852107"}, {"d": "JABALPUR", "n": "Chitra Thakur", "m": "6265852323"}, {"d": "JABALPUR", "n": "Arjun Singh Markam", "m": "6265860497"}];
+/* ---------- Supabase config ---------- */
+const SUPA_URL="https://upvdrlwpwumnsdgrsonn.supabase.co";
+const SUPA_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVwdmRybHdwd3VtbnNkZ3Jzb25uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzNjU2NTEsImV4cCI6MjA5Nzk0MTY1MX0.jLChXU1PQl-cSkR0O2opCEQ28pWZxNnT4S4vZpKMJTc";
+const CAMPAIGN="11111111-1111-1111-1111-111111111111";
+let sb=null; try{ if(window.supabase) sb=window.supabase.createClient(SUPA_URL,SUPA_ANON); }catch(e){}
+let MODE='demo', current=null, liveDone=0, liveReach=0, livePending=0, liveTotal=0;
+const IC={
+ phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
+ check:'<polyline points="20 6 9 17 4 12"/>',
+ x:'<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+ rotate:'<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>',
+ phoneoff:'<path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/><line x1="23" y1="1" x2="1" y2="23"/>',
+ ban:'<circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>',
+ power:'<path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>',
+ users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+ folder:'<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+ settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+ clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+ user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+ skip:'<polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/>',
+ dot:'<circle cx="12" cy="12" r="9"/>'
+};
+const svg=(n,sz)=>`<svg viewBox="0 0 24 24" width="${sz||20}" height="${sz||20}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${IC[n]||''}</svg>`;
+
+const OUTCOMES=[
+  {k:'interested',t:'Interested',    ic:'check',   col:'i-green',stamp:'Interested', conn:true, color:'var(--green)'},
+  {k:'not',       t:'Not interested',ic:'x',       col:'i-red',  stamp:'Declined',   conn:true, color:'var(--red)'},
+  {k:'callback',  t:'Call back',     ic:'rotate',  col:'i-brass',stamp:'Call back',  conn:true, color:'var(--brass-dk)'},
+  {k:'noanswer',  t:'No answer',     ic:'phoneoff',col:'i-slate',stamp:'No answer',  conn:false,color:'var(--slate)'},
+  {k:'wrong',     t:'Wrong number',  ic:'ban',     col:'i-slate',stamp:'Wrong no.',  conn:false,color:'var(--slate)'},
+  {k:'off',       t:'Switched off',  ic:'power',   col:'i-slate',stamp:'Switched off',conn:false,color:'var(--slate)'},
+];
+const CALLERS=[{n:'Arti',s:'On call',c:'#46b07c',d:null},{n:'Monu',s:'Online',c:'#46b07c',d:198,cn:120},
+ {n:'Kaju',s:'Idle 20m',c:'#e3b24f',d:12,cn:4},{n:'Usha',s:'Offline',c:'#7c8492',d:0,cn:0}];
+const LS='calldesk_v2';
+let state=JSON.parse(localStorage.getItem(LS)||'null')||{idx:0,log:[]};
+const save=()=>localStorage.setItem(LS,JSON.stringify(state));
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const initials=n=>(n||'?').trim().slice(0,1).toUpperCase();
+const fmt=m=>'+91 '+String(m).replace(/(\d{5})(\d{5})/,'$1 $2');
+
+function stats(){
+  if(MODE==='live'){
+    document.getElementById('st-done').textContent=liveDone;
+    document.getElementById('rl-reach').textContent=liveReach+' reached';
+    document.getElementById('rl-left').textContent=livePending.toLocaleString()+' left in list';
+    document.getElementById('rail').style.width=(liveTotal?Math.round((liveTotal-livePending)/liveTotal*100):0)+'%';
+    return;
+  }
+  const done=state.log.length,reach=state.log.filter(x=>x.conn).length,total=CONTACTS.length;
+  document.getElementById('st-done').textContent=done;
+  document.getElementById('rl-reach').textContent=reach+' reached';
+  document.getElementById('rl-left').textContent=(total-state.idx)+' left in list';
+  document.getElementById('rail').style.width=Math.round(state.idx/total*100)+'%';
+}
+function cardHTML(c,idText){
+  let pad='';OUTCOMES.forEach(o=>{const act=o.k==='callback'?'askCallback()':"log('"+o.k+"')";
+    pad+=`<button class="oc" onclick="${act}"><span class="ico ${o.col}">${svg(o.ic,18)}</span>${o.t}</button>`;});
+  return `<div class="rec" id="rec">
+    <div class="rectag">${svg('user',11)} BENEFICIARY · LIVE</div>
+    <div class="recno">${idText}</div>
+    <div class="stamp" id="stamp"><span id="stampt"></span></div>
+    <div class="token">${initials(c.n)}</div>
+    <div class="cname">${c.n}</div>
+    <div class="cnum">${fmt(c.m)}</div>
+    <div class="cloc">${c.d}</div>
+    <a class="call" href="tel:${c.m}">${svg('phone',19)} Call now</a>
+    <div class="padlbl"><span>Log the call</span><span>one tap &rarr; next</span></div>
+    <div class="pad">${pad}</div>
+    <input class="note" id="note" placeholder="Note (optional)…"/>
+    <button class="skip" onclick="log('skip',true)">${svg('skip',16)} Skip this number</button>
+  </div>`;
+}
+function doneHTML(){const n=MODE==='live'?liveDone:state.log.length;
+  return `<div class="done"><div class="big">${n}</div><h3>List cleared</h3><p>Every number logged. Strong work.</p></div>`;}
+function renderCall(anim){
+  stats();const st=document.getElementById('stage');
+  const c = MODE==='live' ? current : CONTACTS[state.idx];
+  const ended = MODE==='live' ? (current===null) : (state.idx>=CONTACTS.length);
+  if(ended){ st.innerHTML=doneHTML(); return; }
+  const idText = MODE==='live' ? ('#'+c.id) : ('#'+String(state.idx+1).padStart(4,'0'));
+  st.innerHTML=cardHTML(c,idText);
+  if(anim&&!reduce)document.getElementById('rec').classList.add('enter');
+}
+async function nextNumber(){
+  if(MODE!=='live'){ renderCall(true); return; }
+  document.getElementById('stage').innerHTML='<div class="done"><p>Loading next number…</p></div>';
+  const {data,error}=await sb.rpc('get_next_contact',{p_campaign:CAMPAIGN});
+  if(error){ toast('Load failed','x'); console.error(error); current=null; renderCall(false); return; }
+  current = data ? {id:data.id, n:data.name, m:data.mobile, d:data.district} : null;
+  renderCall(true);
+}
+
+function roundTo(d){d.setMinutes(0,0,0);return d;}
+function cbPresets(){const now=new Date(),mk=(h,a)=>{const d=new Date(now);d.setDate(d.getDate()+a);d.setHours(h,0,0,0);return d;};
+  return [{t:'Later today',d:roundTo(new Date(now.getTime()+3*3600*1000))},{t:'Tomorrow AM',d:mk(10,1)},
+          {t:'Tomorrow PM',d:mk(16,1)},{t:'In 2 days',d:mk(11,2)}];}
+let cbChoice=null;
+const fmtCB=d=>d.toLocaleString([], {weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+function toLocalInput(d){const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes());}
+function askCallback(){const c=CONTACTS[state.idx];
+  document.getElementById('cbwho').textContent='Ring back '+c.n+' — pick a time';
+  const pres=cbPresets();cbChoice=pres[1].d;window._cbpres=pres;
+  let h='';pres.forEach((p,i)=>{h+=`<button class="cb ${i===1?'sel':''}" data-i="${i}" onclick="pickCB(${i})">${p.t}<small>${fmtCB(p.d)}</small></button>`;});
+  document.getElementById('cbgrid').innerHTML=h;document.getElementById('cbinput').value=toLocalInput(pres[1].d);
+  document.getElementById('cbbg').classList.add('on');}
+function pickCB(i){cbChoice=window._cbpres[i].d;document.getElementById('cbinput').value=toLocalInput(cbChoice);
+  document.querySelectorAll('.cb').forEach(b=>b.classList.toggle('sel',+b.dataset.i===i));}
+function closeCallback(){document.getElementById('cbbg').classList.remove('on');}
+function confirmCallback(){const v=document.getElementById('cbinput').value;const when=v?new Date(v):cbChoice;closeCallback();log('callback',false,when.toISOString());}
+
+async function log(k,skip,cb){
+  const o=OUTCOMES.find(x=>x.k===k);
+  const c = MODE==='live' ? current : CONTACTS[state.idx];
+  if(!c) return;
+  const note=(document.getElementById('note')||{}).value||'';
+  if(MODE==='live'){
+    const {error}=await sb.rpc('log_outcome',{p_contact:c.id,p_outcome:(skip?'skip':k),p_note:note,p_callback:cb||null});
+    if(error){ toast('Save failed','x'); console.error(error); return; }
+    if(!skip){ liveDone++; if(o&&o.conn) liveReach++; livePending=Math.max(0,livePending-1); }
+  } else {
+    state.log.push({m:c.m,k,conn:o?o.conn:false,note,cb:cb||null}); state.idx++; save();
+  }
+  toast(skip?'Skipped':(k==='callback'&&cb?('Call back '+fmtCB(new Date(cb))):o.t),skip?'skip':(o?o.ic:'check'));
+  const rec=document.getElementById('rec');
+  const advance=()=>{ if(MODE==='live') nextNumber(); else { renderCall(true); stats(); } };
+  if(reduce||!rec){ advance(); return; }
+  if(!skip){const s=document.getElementById('stamp');s.style.color=o.color;document.getElementById('stampt').textContent=o.stamp;rec.classList.add('fire');}
+  setTimeout(()=>{rec.classList.add('leave');setTimeout(advance,300);},skip?0:360);
+}
+function toast(t,ic){const el=document.getElementById('toast');el.innerHTML=svg(ic||'check',16)+'<span>'+t+'</span>';
+  el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),1150);}
+
+const STMAP={oncall:['On call','#46b07c'],online:['Online','#46b07c'],idle:['Idle','#e3b24f'],offline:['Offline','#7c8492']};
+async function renderCallers(){
+  if(MODE==='live'){
+    const {data}=await sb.from('profiles').select('full_name,state,role').order('full_name');
+    let h='';(data||[]).forEach(p=>{const s=STMAP[p.state]||STMAP.offline;
+      h+=`<div class="row"><div><b>${p.full_name}${p.role==='admin'?' ·':''}</b><div class="meta">${p.role==='admin'?'admin':'agent'}</div></div>
+        <span class="chip"><span class="dot" style="color:${s[1]};background:${s[1]}"></span>${s[0]}</span></div>`;});
+    document.getElementById('callerlist').innerHTML=h||'<div class="note2">No agents yet — add users in Supabase.</div>'; return;
+  }
+  const done=state.log.length,conn=state.log.filter(x=>x.conn).length;let h='';
+  CALLERS.forEach((c,i)=>{const d=i===0?done:c.d,cn=i===0?conn:c.cn;
+    h+=`<div class="row"><div><b>${c.n}</b><div class="meta">${d} calls · ${cn} reached</div></div>
+      <span class="chip"><span class="dot" style="color:${c.c};background:${c.c}"></span>${c.s}</span></div>`;});
+  document.getElementById('callerlist').innerHTML=h;}
+async function renderLists(){
+  if(MODE==='live'){
+    const t=await sb.from('contacts').select('id',{count:'exact',head:true}).eq('campaign_id',CAMPAIGN);
+    const d=await sb.from('contacts').select('id',{count:'exact',head:true}).eq('campaign_id',CAMPAIGN).eq('status','done');
+    const total=t.count||0,done=d.count||0,pct=total?Math.round(done/total*100):0;
+    document.getElementById('listwrap').innerHTML=`<div class="row" style="display:block"><b>Jabalpur · Clean</b>
+      <div class="meta">${total.toLocaleString()} numbers</div><div class="bar"><i style="width:${pct}%"></i></div>
+      <div class="meta">${done.toLocaleString()} done · ${(total-done).toLocaleString()} pending · ${pct}%</div></div>`;return;}
+  const done=state.idx,total=CONTACTS.length,pct=Math.round(done/total*100);
+  document.getElementById('listwrap').innerHTML=`
+   <div class="row" style="display:block"><b>Jabalpur · Clean</b><div class="meta">${total.toLocaleString()} numbers · 6 agents</div>
+     <div class="bar"><i style="width:${pct}%"></i></div><div class="meta">${done} done · ${total-done} pending · ${pct}%</div></div>
+   <div class="row"><div><b>Reattempts</b><div class="meta">652 invalid numbers</div></div>
+     <span class="chip"><span class="dot" style="color:#7c8492;background:#7c8492"></span>Paused</span></div>`;}
+function renderSet(){
+  const acct=document.getElementById('acct');
+  if(MODE==='live'){
+    acct.innerHTML=`<div class="row"><div><b>Connected</b><div class="meta" id="acctmail">live · Supabase</div></div>
+      <button class="chip" onclick="doLogout()">Sign out</button></div>`;
+    if(sb) sb.auth.getUser().then(({data})=>{const e=document.getElementById('acctmail');if(e&&data&&data.user)e.textContent=data.user.email;});
+  } else {
+    acct.innerHTML=`<div class="row"><div><b>Demo mode</b><div class="meta">${sb?'not signed in':'offline — no connection'}</div></div></div>`;
+  }
+  let h='';OUTCOMES.forEach(o=>{h+=`<div class="row"><div style="display:flex;align-items:center;gap:11px">
+  <span class="ico ${o.col}" style="width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),inset 0 -2px 4px rgba(0,0,0,.3)">${svg(o.ic,17)}</span>
+  <b>${o.t}</b></div><span class="chip">${o.conn?'reached':'no contact'}</span></div>`;});
+  document.getElementById('ocset').innerHTML=h;}
+function resetAll(){if(confirm("Reset today's progress?")){state={idx:0,log:[]};save();renderCall(false);renderLists();renderCallers();toast('Reset','rotate');}}
+
+document.querySelectorAll('nav button').forEach(b=>{
+  b.innerHTML=svg(b.dataset.ic,19)+'<span>'+b.dataset.lbl+'</span>';
+  b.onclick=()=>{const v=b.dataset.v;
+    document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+    document.querySelectorAll('.view').forEach(s=>s.classList.remove('on'));
+    document.getElementById('v-'+v).classList.add('on');
+    if(v==='callers')renderCallers();if(v==='lists')renderLists();if(v==='set')renderSet();};
+});
+document.getElementById('agbadge').innerHTML=svg('user',20);
+document.getElementById('h-callers').innerHTML=svg('users',18);
+document.getElementById('h-lists').innerHTML=svg('folder',18);
+document.getElementById('h-set').innerHTML=svg('settings',18);
+document.getElementById('h-cb').innerHTML=svg('clock',18);
+
+/* ---------- live boot ---------- */
+async function doLogout(){if(sb)await sb.auth.signOut();location.reload();}
+async function goLive(){
+  MODE='live';
+  try{
+    const {data:{user}}=await sb.auth.getUser();
+    const {data:prof}=await sb.from('profiles').select('full_name').eq('id',user.id).single();
+    if(prof&&prof.full_name)document.getElementById('agentn').textContent=prof.full_name;
+    const t=await sb.from('contacts').select('id',{count:'exact',head:true}).eq('campaign_id',CAMPAIGN);
+    const p=await sb.from('contacts').select('id',{count:'exact',head:true}).eq('campaign_id',CAMPAIGN).neq('status','done');
+    liveTotal=t.count||0;livePending=p.count||0;
+    const today=await sb.rpc('my_today');
+    if(today.data&&today.data[0]){liveDone=today.data[0].calls||0;liveReach=today.data[0].reached||0;}
+  }catch(e){console.error(e);}
+  await nextNumber();stats();
+}
+async function boot(){
+  if(!sb){MODE='demo';renderCall(false);return;}
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){await goLive();}else{MODE='demo';renderCall(false);}
+}
+boot();
+</script>
+</body>
+</html>

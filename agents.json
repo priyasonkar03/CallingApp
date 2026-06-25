@@ -1,0 +1,8 @@
+{
+  "admin_email": "shree.pandeywork@gmail.com",
+  "agents": [
+    { "email": "shree.pandeywork@gmail.com", "password": "ChangeMe!2026", "full_name": "Shree" },
+    { "email": "agent1@example.com",          "password": "ChangeMe!2026", "full_name": "Agent One" },
+    { "email": "agent2@example.com",          "password": "ChangeMe!2026", "full_name": "Agent Two" }
+  ]
+}
