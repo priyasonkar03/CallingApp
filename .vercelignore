@@ -1,0 +1,16 @@
+# Big data files — never deploy (huge, and the app reads data from Supabase, not these)
+*.xlsx
+*.csv
+
+# Secrets / server-side — would be PUBLICLY downloadable on a static deploy, so keep them out
+agents.json
+import-to-supabase.js
+create-agents.js
+run-schema.js
+schema.sql
+BACKEND_SPEC.md
+supabase/
+
+# Local / editor cruft
+.claude/
+to-do.md

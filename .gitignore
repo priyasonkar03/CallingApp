@@ -1,0 +1,24 @@
+# Big data files — never commit (huge; the app reads from Supabase, not these)
+*.xlsx
+*.csv
+
+# Secrets — must never reach GitHub
+agents.json
+.env
+.env.*
+fix-callerone.js
+fix-callerone.sql
+
+# Server-side / local-only (not needed by the static site)
+import-to-supabase.js
+create-agents.js
+run-schema.js
+.claude/
+to-do.md
+
+# tooling
+node_modules/
+.vercel/
+.DS_Store
+
+.vercel

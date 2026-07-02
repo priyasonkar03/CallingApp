@@ -1,0 +1,22 @@
+{
+  "name": "calling-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "clear-profiles.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
+    "puppeteer": "^25.2.1"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.108.2"
+  }
+}

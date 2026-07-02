@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Call Desk</string>
+    <string name="title_activity_main">Call Desk</string>
+    <string name="package_name">com.saigraphics.calldesk</string>
+    <string name="custom_url_scheme">com.saigraphics.calldesk</string>
+</resources>
